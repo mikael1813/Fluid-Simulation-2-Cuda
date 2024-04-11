@@ -17,7 +17,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 3000;
+constexpr auto particleCount = 30;
 
 constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
@@ -473,7 +473,7 @@ void Environment::update(float dt) {
 		temporaryParticles.push_back(*particle);
 	}
 
-	//GpuParallelUpdateParticleDensities(temporaryParticles, InteractionMatrixClass::getInstance(), particleRadiusOfRepel);
+	GpuParallelUpdateParticleDensities(temporaryParticles, InteractionMatrixClass::getInstance(), particleRadiusOfRepel);
 
 
 	// testing

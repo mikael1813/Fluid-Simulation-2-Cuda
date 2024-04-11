@@ -39,37 +39,57 @@ __global__ void updateParticleDensitiesKernel(Particle* particles, int particleR
 void GpuParallelUpdateParticleDensities(std::vector<Particle>& particles, InteractionMatrixClass* interactionMatrix, int particleRadiusOfRepel) {
 
 
-	Particle* cudaParticles;
+	// Allocate memory on GPU
+	Particle* gpuParticles;
+	cudaMalloc(&gpuParticles, particles.size() * sizeof(Particle));
 
-	cudaError_t cudaStatus;
+	// Copy data from CPU to GPU
+	cudaMemcpy(gpuParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
 
-	InteractionMatrixClass* cudaInteractionMatrix;
-	//int cudaParticleRadiusOfRepel;
+	// Launch CUDA kernel
+	updateParticleDensitiesKernel << <1, particles.size() >> > (gpuParticles, particles.size());
 
-	cudaStatus = cudaMalloc(&cudaParticles, particles.size() * sizeof(Particle));
-	//cudaStatus = cudaMalloc(&cudaInteractionMatrix, sizeof(InteractionMatrixClass));
-	//cudaStatus = cudaMalloc(&cudaParticleRadiusOfRepel, sizeof(int));
-
-	cudaStatus = cudaMemcpy(cudaParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-	//cudaStatus = cudaMemcpy(cudaInteractionMatrix, interactionMatrix, sizeof(InteractionMatrixClass), cudaMemcpyHostToDevice);
-	//cudaStatus = cudaMemcpy(cudaParticleRadiusOfRepel, &particleRadiusOfRepel, sizeof(int), cudaMemcpyHostToDevice);
-
-	updateParticleDensitiesKernel << <1, particles.size() >> > (cudaParticles, particleRadiusOfRepel);
-
-	// Wait for the kernel to finish
+	// Wait for kernel to finish
 	cudaDeviceSynchronize();
 
-	Particle* resultParticles = new Particle[particles.size()];
-	cudaMemcpy(resultParticles, cudaParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
+	Particle* output = new Particle[particles.size()];
 
-	//cudaStatus = cudaMemcpy(output, cudaParticles, particles.size() * sizeof(Particle*), cudaMemcpyDeviceToHost);
-	auto y = resultParticles[9];
-	int x = 0;
+	cudaMemcpy(output, gpuParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
 
-	// Cleanup resources
-	cudaFree(cudaParticles);
+	for (int i = 0; i < particles.size(); i++) {
+		particles[i] = output[i];
+	}
 
-	x = 2;
+	// Free GPU memory
+	cudaFree(gpuParticles);
+
+	//Particle* cudaParticles;
+
+	//cudaError_t cudaStatus;
+
+	//InteractionMatrixClass* cudaInteractionMatrix;
+	////int cudaParticleRadiusOfRepel;
+
+	//cudaStatus = cudaMalloc(&cudaParticles, particles.size() * sizeof(Particle));
+
+	//cudaStatus = cudaMemcpy(cudaParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
+
+	//updateParticleDensitiesKernel << <1, particles.size() >> > (cudaParticles, particleRadiusOfRepel);
+
+	//// Wait for the kernel to finish
+	//cudaDeviceSynchronize();
+
+	//Particle* resultParticles = new Particle[particles.size()];
+	//cudaMemcpy(resultParticles, cudaParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
+
+	////cudaStatus = cudaMemcpy(output, cudaParticles, particles.size() * sizeof(Particle*), cudaMemcpyDeviceToHost);
+	//auto y = resultParticles[9];
+	//int x = 0;
+
+	//// Cleanup resources
+	//cudaFree(cudaParticles);
+
+	//x = 2;
 
 }
 
