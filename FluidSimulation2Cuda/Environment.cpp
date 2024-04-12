@@ -17,7 +17,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 30;
+constexpr auto particleCount = 3000;
 
 constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
@@ -475,22 +475,10 @@ void Environment::update(float dt) {
 
 	GpuParallelUpdateParticleDensities(temporaryParticles, InteractionMatrixClass::getInstance(), particleRadiusOfRepel);
 
-
-	// testing
-
-	std::vector<Quo> particles;
-	//Particle particles[10];
-	// Populate particles vector...
-	for (int i = 0; i < 10; i++) {
-		Quo p{};
-		particles.push_back(p);
-		particles[i] = p;
+	for (int i = 0; i < m_Particles.size(); i++) {
+		m_Particles.at(i)->m_Density = temporaryParticles.at(i).m_Density;
 	}
-
-	// Process particle data on GPU
-	processDataOnGPU(particles);
-
-	// testing
+	
 
 	time2 = std::chrono::steady_clock::now();
 	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();

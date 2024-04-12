@@ -59,6 +59,9 @@
     <ClInclude Include="GpuParallel.cuh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CudaMath.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="GpuParallel.cu">

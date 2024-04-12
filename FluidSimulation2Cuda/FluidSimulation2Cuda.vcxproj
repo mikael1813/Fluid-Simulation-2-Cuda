@@ -21,6 +21,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.hpp" />
+    <ClInclude Include="CudaMath.cuh" />
     <ClInclude Include="Environment.hpp" />
     <ClInclude Include="GpuParallel.cuh" />
     <ClInclude Include="Graphics.hpp" />

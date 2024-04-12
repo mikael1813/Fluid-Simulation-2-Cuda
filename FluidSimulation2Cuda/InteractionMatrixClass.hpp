@@ -16,6 +16,7 @@ public:
 	void addToInteractionMatrixCellSurroundingCells(int x, int y, std::vector<std::vector<MatrixComponenets>>& temporary);
 	void updateInteractionMatrix(const std::vector<Particle*>& particles, int particleRadiusOfRepel);
 	std::vector<Particle*> getParticlesInCell(Vector2D particlePosition, int particleRadiusOfRepel);
+	std::vector<std::vector<MatrixComponenets>>& getMatrix() { return m_InteractionsMatrix; }
 
 	static InteractionMatrixClass* getInstance() {
 		if (s_Instance == nullptr) {
