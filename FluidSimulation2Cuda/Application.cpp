@@ -99,7 +99,7 @@ void Application::loop()
 		frames++;
 
 		if (time_passed >= 1.0f) {
-			//std::cout << "FPS: " << frames << " " << std::endl;
+			std::cout << "FPS: " << frames << " " << std::endl;
 			time_passed = 0.0f;
 			frames = 0;
 		}

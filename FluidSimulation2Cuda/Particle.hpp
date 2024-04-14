@@ -19,7 +19,7 @@ public:
 	Vector2D m_TemporaryVelocity;
 
 	Vector2D m_Velocity;
-
+	Vector2D m_Position;
 
 	float m_Density = 0.0f;
 	int m_ID;
@@ -76,7 +76,7 @@ public:
 
 private:
 
-	Vector2D m_Position;
+	
 
 	//std::vector<Vector2D> m_Forces;
 

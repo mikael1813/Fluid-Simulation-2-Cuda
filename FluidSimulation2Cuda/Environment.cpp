@@ -462,20 +462,22 @@ void Environment::update(float dt) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
 	}
 
-	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
+	std::vector<Particle> temporaryParticles;
 
 	time1 = std::chrono::steady_clock::now();
 
 	//this->updateParticleDensities(0, m_Particles.size());
 	//this->parallelUpdateParticleDensities();
 
-	std::vector<Particle> temporaryParticles;
+	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
 
 	for (auto& particle : m_Particles) {
 		temporaryParticles.push_back(*particle);
 	}
 
 	GpuParallelUpdateParticleDensities(temporaryParticles, particleRadiusOfRepel);
+
+	GpuFreeInteractionMatrix();
 
 	for (int i = 0; i < m_Particles.size(); i++) {
 		m_Particles.at(i)->m_Density = temporaryParticles.at(i).m_Density;
@@ -495,7 +497,11 @@ void Environment::update(float dt) {
 		temporaryParticles.push_back(*particle);
 	}
 
+	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
+
 	GpuParallelCalculateFutureVelocities(temporaryParticles, particleRadiusOfRepel, particleRadius, dt);
+
+	GpuFreeInteractionMatrix();
 
 	for (int i = 0; i < m_Particles.size(); i++) {
 		m_Particles.at(i)->m_FutureVelocity = temporaryParticles.at(i).m_FutureVelocity;
@@ -522,9 +528,26 @@ void Environment::update(float dt) {
 	//std::cout<<"H"<<std::endl;
 
 	//this->checkCollisions(0, m_Particles.size());
-	this->parallelCheckCollisions();
+	//this->parallelCheckCollisions();
 
-	//std::cout<<"I"<<std::endl;
+	temporaryParticles.clear();
+
+	for (auto& particle : m_Particles) {
+		temporaryParticles.push_back(*particle);
+	}
+
+
+	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
+
+	GpuParallelCheckCollision(temporaryParticles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles);
+
+	GpuFreeInteractionMatrix();
+
+	for (int i = 0; i < m_Particles.size(); i++) {
+		m_Particles.at(i)->m_Velocity = temporaryParticles.at(i).m_Velocity;
+		m_Particles.at(i)->m_TemporaryVelocity = temporaryParticles.at(i).m_TemporaryVelocity;
+		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
+	}
 
 }
 

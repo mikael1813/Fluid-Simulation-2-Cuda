@@ -75,12 +75,12 @@ __global__ void updateParticleDensitiesKernel(Particle* particles, int praticles
 }
 
 __device__ GpuVector2D calculatePressureForce(Particle particle, int particleRadiusOfRepel, int particleRadius,
-	Particle* interactionMatrixParticles, int* lengths, size_t interactionMatrixRows/*, size_t interactionMatrixCols,
-	size_t maxParticlesInInteractionMatrixCell*/)
+	Particle* interactionMatrixParticles, int* lengths, int interactionMatrixRows, int interactionMatrixCols,
+	int maxParticlesInInteractionMatrixCell)
 {
 
 	GpuVector2D pressureForce = GpuVector2D();
-	/*const float mass = 1.0f;
+	const float mass = 1.0f;
 
 	Range range = getParticlesInCell(particle.m_PredictedPosition, particleRadiusOfRepel, lengths, interactionMatrixRows, interactionMatrixCols, maxParticlesInInteractionMatrixCell);
 
@@ -92,9 +92,7 @@ __device__ GpuVector2D calculatePressureForce(Particle particle, int particleRad
 		}
 
 		float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
-		if (distance < particleRadius) {
-			int tt = 0;
-		}
+
 		GpuVector2D dir = distance < particleRadius ? GpuVector2D::getRandomDirection() : (GpuVector2D(otherParticle.m_PredictedPosition) - GpuVector2D(particle.m_PredictedPosition)) / distance;
 
 		float slope = CudaMath::smoothingKernelDerivative(particleRadiusOfRepel, distance);
@@ -104,8 +102,8 @@ __device__ GpuVector2D calculatePressureForce(Particle particle, int particleRad
 		float sharedPressure = CudaMath::calculateSharedPressure(density, otherParticle.m_Density);
 
 		pressureForce += -sharedPressure * dir * slope * mass / density;
-	}*/
-
+	}
+	//printf("pressureForceX: %f , pressureForceY: %f\n", pressureForce.X, pressureForce.Y);
 	return pressureForce;
 }
 
@@ -130,8 +128,8 @@ __global__ void calculateParticleFutureVelocitiesKernel(Particle* particles, int
 	}
 
 	GpuVector2D pressureForce = calculatePressureForce(particle, particleRadiusOfRepel, particleRadius,
-		interactionMatrixParticles, lengths, interactionMatrixRows/*, interactionMatrixCols,
-		maxParticlesInInteractionMatrixCell*/);
+		interactionMatrixParticles, lengths, interactionMatrixRows, interactionMatrixCols,
+		maxParticlesInInteractionMatrixCell);
 
 	//pressureForce = GpuVector2D(300, 300);
 	GpuVector2D pressureAcceleration = pressureForce / particle.m_Density;
@@ -145,6 +143,70 @@ __global__ void calculateParticleFutureVelocitiesKernel(Particle* particles, int
 
 	particles[index].m_FutureVelocity.X = futureVelocity.X;
 	particles[index].m_FutureVelocity.Y = futureVelocity.Y;
+}
+
+__global__ void checkCollisionsKernel(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+	int particleRadius, float particleRepulsionForce, Particle* interactionMatrixParticles, int* lengths,
+	int interactionMatrixRows, int interactionMatrixCols, int maxParticlesInInteractionMatrixCell,
+	Surface2D* obstacles, int obstaclesSize)
+{
+	int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (index >= praticlesSize) {
+		return;
+	}
+
+	//printf("index: %d \n", interactionMatrixCols);
+
+	Particle particle = particles[index];
+
+	for (int i = 0; i < obstaclesSize; i++) {
+
+		Surface2D obstacle = obstacles[i];
+
+		if (CudaMath::check_line_segment_circle_intersection(obstacle.Point1, obstacle.Point2,
+			particle.m_Position, particleRadius)) {
+
+			//particle->m_Velocity = reflectionVector * 0.1f;
+			particles[index].m_Velocity.X = 0;
+			particles[index].m_Velocity.Y = 0;
+
+			/*particle.m_Velocity.Y = -particle.m_Velocity.Y;*/
+
+			particles[index].m_Position = particle.m_LastSafePosition;
+
+			break;
+		}
+	}
+
+	Range range = getParticlesInCell(particle.m_PredictedPosition, particleRadiusOfRepel, lengths, interactionMatrixRows, interactionMatrixCols, maxParticlesInInteractionMatrixCell);
+
+	//for (auto& otherParticle : m_Particles) {
+	for (int i = range.start; i < range.end; i++) {
+
+		Particle otherParticle = interactionMatrixParticles[i];
+
+		if (particle.m_ID == otherParticle.m_ID) {
+			continue;
+		}
+
+		if (CudaMath::squared_distance(particle.m_Position, otherParticle.m_Position) <= (particleRadius * particleRadius) * 4) {
+
+			GpuVector2D normalVector{};
+			normalVector.X = otherParticle.m_Position.X - particle.m_Position.X;
+			normalVector.Y = otherParticle.m_Position.Y - particle.m_Position.Y;
+
+			//magnitude of normal vector
+			float magnitude = -1 * sqrt(normalVector.X * normalVector.X + normalVector.Y * normalVector.Y);
+
+			GpuVector2D temporaryVelocity = -normalVector * particleRepulsionForce;
+
+			particles[index].m_TemporaryVelocity.X = temporaryVelocity.X;
+			particles[index].m_TemporaryVelocity.Y = temporaryVelocity.Y;
+
+			//otherParticle->m_TemporaryVelocity = normalVector * particleRepulsionForce;
+		}
+	}
 }
 
 void GpuAllocateInteractionMatrix(InteractionMatrixClass* interactionMatrix) {
@@ -224,6 +286,8 @@ void GpuParallelUpdateParticleDensities(std::vector<Particle>& particles, int pa
 	int blockSize = maxThreadsPerBlock;
 	int numBlocks = (numThreads + blockSize - 1) / blockSize;
 
+	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+
 	// Launch CUDA kernel
 	updateParticleDensitiesKernel << <numBlocks, blockSize >> > (gpuParticles, particles.size(), particleRadiusOfRepel,
 		deviceInteractionMatrixParticles, deviceLengths, interactionMatrixRows, interactionMatrixCols,
@@ -231,6 +295,9 @@ void GpuParallelUpdateParticleDensities(std::vector<Particle>& particles, int pa
 
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
+
+	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
 	// Using std::unique_ptr to manage memory
 	Particle* output = new Particle[particles.size()];
@@ -290,6 +357,53 @@ void GpuParallelCalculateFutureVelocities(std::vector<Particle>& particles, int 
 
 	// Free GPU memory
 	cudaFree(gpuParticles);
+
+}
+
+void GpuParallelCheckCollision(std::vector<Particle>& particles, int particleRadiusOfRepel,
+	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles)
+{
+
+	// Allocate memory on GPU
+	Particle* deviceParticles;
+	Surface2D* deviceObstacles;
+
+	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
+	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+
+	// Copy data from CPU to GPU
+	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
+	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+
+	int numThreads = particles.size();
+	int maxThreadsPerBlock = 1024;
+
+	int blockSize = maxThreadsPerBlock;
+	int numBlocks = (numThreads + blockSize - 1) / blockSize;
+
+	// Launch CUDA kernel
+	checkCollisionsKernel << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+		particleRadius, particleRepulsionForce, deviceInteractionMatrixParticles, deviceLengths, interactionMatrixRows,
+		interactionMatrixCols, maxParticlesInInteractionMatrixCell, deviceObstacles, obstacles.size());
+
+	// Wait for kernel to finish
+	cudaDeviceSynchronize();
+
+	// Using std::unique_ptr to manage memory
+	Particle* output = new Particle[particles.size()];
+
+	cudaMemcpy(output, deviceParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
+
+	for (int i = 0; i < particles.size(); i++) {
+		particles[i] = output[i];
+	}
+
+	// Free output
+	delete[] output;
+
+	// Free GPU memory
+	cudaFree(deviceParticles);
+	cudaFree(deviceObstacles);
 
 }
 
