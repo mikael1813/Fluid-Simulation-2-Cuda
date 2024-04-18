@@ -846,69 +846,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 		}
 	}
 
-	// to do compare hostlengths with interactionMatrix
-	std::vector<Range> uuu;
-	for (int i = 0; i < interactionMatrixSize; i++) {
-		uuu.push_back(hostLengths[i]);
-	}
-
 	hostLengths[lastIndex].end = particles.size();
-
-	for (int idx = 0; idx < particles.size(); idx++) {
-		Particle p = particles[idx];
-		Vector2D point = p.m_PredictedPosition;
-
-		auto xxx = interactionMatrix->getParticlesInCell(p.m_PredictedPosition, particleRadiusOfRepel);
-
-		int row = point.Y / particleRadiusOfRepel;
-		int col = point.X / particleRadiusOfRepel;
-
-		int counter = 0;
-		std::vector<Particle> yyy;
-
-		for (int i = -1; i < 2; i++) {
-			for (int j = -1; j < 2; j++) {
-				if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
-					continue;
-				}
-
-				int lengthIndex = (row + i) * interactionMatrixCols + col + j;
-				auto qqq = hostLengths[lengthIndex];
-
-				for (int otherParticleIndex = hostLengths[lengthIndex].start; otherParticleIndex < hostLengths[lengthIndex].end; otherParticleIndex++) {
-					Particle otherParticle = particles[otherParticleIndex];
-					// forgot to check distance
-					counter++;
-					yyy.push_back(otherParticle);
-				}
-			}
-		}
-		if (counter != xxx.size() && counter != xxx.size() + 1 && counter != xxx.size() - 1) {
-			//for(int i = 0; i < xxx.size(); i++) {
-			//	auto x = xxx[i];
-			//	bool ok = false;
-			//	for(int j = 0; j < yyy.size(); j++) {
-			//		auto y = yyy[j];
-			//		if (x->m_ID == y.m_ID) {
-			//			ok = true;
-			//		}
-			//	}
-			//	if (!ok) {
-			//		/*printf("not ok \n");*/
-			//	}
-			//}
-			int finished = 0;
-			//printf("counter: %d, xxx.size(): %d \n", counter, xxx.size());
-		}
-
-	}
-
-	/*for (int i = 0; i < interactionMatrixSize; i++) {
-		auto x = hostLengths[i];
-		if (x.end != 0) {
-			continue;
-		}
-	}*/
 
 	// Allocate memory on GPU
 	cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
