@@ -18,6 +18,7 @@ public:
 
 	void render(int width, int height);
 	void update(float dt);
+	void newUpdate(float dt);
 
 private:
 	std::vector<Particle*> m_Particles;

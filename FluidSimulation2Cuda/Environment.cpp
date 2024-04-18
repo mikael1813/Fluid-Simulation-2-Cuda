@@ -23,7 +23,7 @@ constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
 constexpr auto particleDistance = 30;
 
-constexpr auto particleRepulsionForce = 10.0f;
+constexpr auto particleRepulsionForce = 1.0f;
 
 constexpr int SCREEN_WIDTH = 1280;
 constexpr int SCREEN_HEIGHT = 720;
@@ -453,6 +453,7 @@ void Environment::update(float dt) {
 	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
 	InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
 
+
 	//std::cout<<"D"<<std::endl;
 
 	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
@@ -505,6 +506,11 @@ void Environment::update(float dt) {
 
 	for (int i = 0; i < m_Particles.size(); i++) {
 		m_Particles.at(i)->m_FutureVelocity = temporaryParticles.at(i).m_FutureVelocity;
+		m_Particles.at(i)->m_Velocity = temporaryParticles.at(i).m_Velocity;
+		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
+		m_Particles.at(i)->m_TemporaryVelocity = temporaryParticles.at(i).m_TemporaryVelocity;
+		m_Particles.at(i)->m_PredictedPosition = temporaryParticles.at(i).m_PredictedPosition;
+		m_Particles.at(i)->m_LastSafePosition = temporaryParticles.at(i).m_LastSafePosition;
 	}
 
 	time2 = std::chrono::steady_clock::now();
@@ -515,20 +521,23 @@ void Environment::update(float dt) {
 	//std::cout<<"F"<<std::endl;
 
 	// apply future velocities to current velocities
-	for (auto& particle : m_Particles) {
+	/*for (auto& particle : m_Particles) {
 		particle->updateVelocity();
 		particle->update(dt);
 		particle->m_PredictedPosition = particle->getPosition();
-	}
+	}*/
 
 	//std::cout<<"G"<<std::endl;
 
-	InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
+	//InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
 
 	//std::cout<<"H"<<std::endl;
 
+	time1 = std::chrono::steady_clock::now();
+
 	//this->checkCollisions(0, m_Particles.size());
 	//this->parallelCheckCollisions();
+
 
 	temporaryParticles.clear();
 
@@ -539,7 +548,7 @@ void Environment::update(float dt) {
 
 	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
 
-	GpuParallelCheckCollision(temporaryParticles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles);
+	//GpuParallelCheckCollision(temporaryParticles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles);
 
 	GpuFreeInteractionMatrix();
 
@@ -549,5 +558,66 @@ void Environment::update(float dt) {
 		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
 	}
 
+	time2 = std::chrono::steady_clock::now();
+	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
+
+	int x = 0;
+}
+
+bool customCompare(Particle* a, Particle* b) {
+	// Define your custom comparison logic here
+	// For example, sort in descending order
+
+	int rowA = a->m_Position.Y / particleRadiusOfRepel;
+	int colA = a->m_Position.X / particleRadiusOfRepel;
+
+	int rowB = b->m_Position.Y / particleRadiusOfRepel;
+	int colB = b->m_Position.X / particleRadiusOfRepel;
+
+	if (rowA == rowB) {
+		return colA < colB;
+	}
+
+	return rowA < rowB;
+}
+
+void Environment::newUpdate(float dt) {
+
+	std::sort(m_Particles.begin(), m_Particles.end(), customCompare);
+
+	std::vector<Particle> temporaryParticles;
+
+	for (auto& particle : m_Particles) {
+		temporaryParticles.push_back(*particle);
+	}
+
+	int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
+	int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;
+
+	GpuUpdateParticles(temporaryParticles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
+		interactionMatrixRows, interactionMatrixCols, InteractionMatrixClass::getInstance());
+
+	for (int i = 0; i < m_Particles.size(); i++) {
+		m_Particles.at(i)->m_Density = temporaryParticles.at(i).m_Density;
+		m_Particles.at(i)->m_FutureVelocity = temporaryParticles.at(i).m_FutureVelocity;
+		m_Particles.at(i)->m_Velocity = temporaryParticles.at(i).m_Velocity;
+		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
+		m_Particles.at(i)->m_TemporaryVelocity = temporaryParticles.at(i).m_TemporaryVelocity;
+		m_Particles.at(i)->m_PredictedPosition = temporaryParticles.at(i).m_PredictedPosition;
+		m_Particles.at(i)->m_LastSafePosition = temporaryParticles.at(i).m_LastSafePosition;
+	}
+
+	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+	InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
+
+
+	/*for (auto& pipe : m_Pipes) {
+		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
+	}*/
+
+	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
+
+	int x = 0;
 }
 

@@ -146,5 +146,6 @@ void Application::render()
 
 void Application::update(float dt)
 {
-	m_environment->update(dt);
+	//m_environment->update(dt);
+	m_environment->newUpdate(dt);
 }

@@ -41,7 +41,7 @@ public:
 
 		m_Forces.clear();*/
 
-		m_Velocity += m_TemporaryVelocity * dt;
+		m_Velocity += m_TemporaryVelocity;
 
 		m_TemporaryVelocity = Vector2D();
 
