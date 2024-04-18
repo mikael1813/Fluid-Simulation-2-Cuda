@@ -583,7 +583,12 @@ bool customCompare(Particle* a, Particle* b) {
 
 void Environment::newUpdate(float dt) {
 
+	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+
 	std::sort(m_Particles.begin(), m_Particles.end(), customCompare);
+
+	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
 	std::vector<Particle> temporaryParticles;
 
@@ -593,6 +598,8 @@ void Environment::newUpdate(float dt) {
 
 	int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
 	int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;
+
+	time1 = std::chrono::steady_clock::now();
 
 	GpuUpdateParticles(temporaryParticles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
 		interactionMatrixRows, interactionMatrixCols, InteractionMatrixClass::getInstance());
@@ -607,16 +614,12 @@ void Environment::newUpdate(float dt) {
 		m_Particles.at(i)->m_LastSafePosition = temporaryParticles.at(i).m_LastSafePosition;
 	}
 
-	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-	InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
-
-
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
 	}*/
 
-	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
-	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
+	time2 = std::chrono::steady_clock::now();
+	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
 	int x = 0;
 }

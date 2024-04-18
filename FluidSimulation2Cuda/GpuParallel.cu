@@ -350,9 +350,9 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 
 	density = density / volume * scalar;
 
-	if (density == 0) {
+	/*if (density == 0) {
 		printf("densityyyyyyy: %f, index: %d\n", density, index);
-	}
+	}*/
 
 	particles[index].m_Density = density;
 }
@@ -395,9 +395,9 @@ __device__ GpuVector2D calculatePressureForce2(int index, Particle* particles, i
 
 				float density = otherParticle.m_Density;
 
-				if (density == 0) {
+				/*if (density == 0) {
 					printf("density: %f, index: %d\n", density, index);
-				}
+				}*/
 
 				float sharedPressure = CudaMath::calculateSharedPressure(density, otherParticle.m_Density);
 
