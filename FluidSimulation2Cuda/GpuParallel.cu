@@ -8,6 +8,10 @@
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
+// Allocate memory on GPU
+Particle* deviceParticles;
+Particle* deviceTemporary;
+
 Particle* deviceInteractionMatrixParticles;
 
 int* deviceLengths;
@@ -795,35 +799,64 @@ void GpuParallelCheckCollision(std::vector<Particle>& particles, int particleRad
 
 }
 
-void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRepel,
-	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
-	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols,
-	InteractionMatrixClass* interactionMatrix) {
+//Device function for recursive Merge
+__device__ void Merge(Particle* arr, Particle* temp, int left, int middle, int right, int particleRadiusOfRepel)
+{
+	int i = left;
+	int j = middle;
+	int k = left;
 
-	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
+	while (i < middle && j < right)
+	{
+		int rowA = arr[i].m_Position.Y / particleRadiusOfRepel;
+		int colA = arr[i].m_Position.X / particleRadiusOfRepel;
 
-	// Allocate memory on GPU
-	Particle* deviceParticles;
-	Surface2D* deviceObstacles;
+		int rowB = arr[j].m_Position.Y / particleRadiusOfRepel;
+		int colB = arr[j].m_Position.X / particleRadiusOfRepel;
 
-	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
-	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+		//if (arr[i] <= arr[j])
+		if (rowA < rowB || (rowA == rowB && colA <= colB))
+			temp[k++] = arr[i++];
+		else
+			temp[k++] = arr[j++];
+	}
 
-	// Copy data from CPU to GPU
-	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+	while (i < middle)
+		temp[k++] = arr[i++];
+	while (j < right)
+		temp[k++] = arr[j++];
 
-	Range* hostLengths = new Range[interactionMatrixSize]{ Range{0,0} };
-	Range* lengths;
+	for (int x = left; x < right; x++)
+		arr[x] = temp[x];
+}
+
+//GPU Kernel for Merge Sort
+__global__ void MergeSortGPU(Particle* arr, Particle* temp, int n, int width, int particleRadiusOfRepel)
+{
+	int tid = threadIdx.x + blockDim.x * blockIdx.x;
+	int left = tid * width;
+	int middle = left + width / 2;
+	int right = left + width;
+
+	if (left < n && middle < n)
+	{
+		Merge(arr, temp, left, middle, right, particleRadiusOfRepel);
+	}
+}
+
+__global__ void setLengths(Particle* particles, int particlesSize, int particleRadiusOfRepel, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
+	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	int currentRow = -1;
 	int currentCol = -1;
 
 	int lastIndex = 0;
 
-	for (int i = 0; i < particles.size(); i++) {
+	for (int i = 0; i < particlesSize; i++) {
 		Particle particle = particles[i];
 		Vector2D point = particle.m_Position;
+
+		//printf("index: %d, point: %f %f \n", index, point.X, point.Y);
 
 		int row = point.Y / particleRadiusOfRepel;
 		int col = point.X / particleRadiusOfRepel;
@@ -837,21 +870,87 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 			currentCol = col;
 
 			if (row != 0 || col != 0) {
-				hostLengths[lastIndex].end = i;
+				lengths[lastIndex].end = i;
 			}
 
-			hostLengths[row * interactionMatrixCols + col] = Range{ i, 0 };
+			lengths[row * interactionMatrixCols + col] = Range{ i, 0 };
 
 			lastIndex = row * interactionMatrixCols + col;
 		}
 	}
 
-	hostLengths[lastIndex].end = particles.size();
+	lengths[lastIndex].end = particlesSize;
+}
+
+__global__ void bubbleSort(Particle* particles, int particlesSize, int particleRadiusOfRepel) {
+	bool ok = false;
+	while (!ok) {
+		ok = true;
+		for (int i = 0; i < particlesSize - 1; i++) {
+			Particle particle1 = particles[i];
+			Particle particle2 = particles[i + 1];
+
+			int row1 = particle1.m_Position.Y / particleRadiusOfRepel;
+			int col1 = particle1.m_Position.X / particleRadiusOfRepel;
+
+			int row2 = particle2.m_Position.Y / particleRadiusOfRepel;
+			int col2 = particle2.m_Position.X / particleRadiusOfRepel;
+
+			if (row1 > row2 || (row1 == row2 && col1 > col2)) {
+				Particle temp = particles[i];
+				particles[i] = particles[i + 1];
+				particles[i + 1] = temp;
+				ok = false;
+				break;
+			}
+		}
+	}
+
+}
+
+void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRepel,
+	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
+	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols,
+	InteractionMatrixClass* interactionMatrix) {
+
+	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
+
+	Surface2D* deviceObstacles;
+
+	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
+	cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
+	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+
+	// Copy data from CPU to GPU
+	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
+	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+
+	// TODO use merge sort to sort particles by cell
+
+	//Set number of threads and blocks for kernel calls
+	int threadsPerBlock = 1024;
+	int blocksPerGrid = (particles.size() + threadsPerBlock - 1) / threadsPerBlock;
+
+	//Call GPU Merge Kernel and time the run
+	for (int wid = 1; wid < particles.size(); wid *= 2)
+	{
+		//MergeSortGPU << <threadsPerBlock, blocksPerGrid >> > (deviceParticles, deviceTemporary, particles.size(), wid * 2, particleRadiusOfRepel);
+		//cudaDeviceSynchronize();
+	}
+	//bubbleSort<<<1, 1 >> > (deviceParticles, particles.size(), particleRadiusOfRepel);
+	//cudaDeviceSynchronize();
+	Range* hostLengths = new Range[interactionMatrixSize]{ Range{0,0} };
+	Range* lengths;
+
+
 
 	// Allocate memory on GPU
 	cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
-	cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
+	//cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
 
+	setLengths << < 1, 1 >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+		lengths, interactionMatrixRows, interactionMatrixCols);
+	cudaDeviceSynchronize();
 
 	int numThreads = particles.size();
 	int maxThreadsPerBlock = 1024;
@@ -886,6 +985,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	// Free GPU memory
 	cudaFree(deviceParticles);
+	cudaFree(deviceTemporary);
 	cudaFree(deviceObstacles);
 	cudaFree(lengths);
 
