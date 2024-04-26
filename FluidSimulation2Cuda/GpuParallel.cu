@@ -8,9 +8,18 @@
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
+struct Range {
+	int start;
+	int end;
+};
+
 // Allocate memory on GPU
 Particle* deviceParticles;
 Particle* deviceTemporary;
+
+Range* lengths;
+
+Surface2D* deviceObstacles;
 
 Particle* deviceInteractionMatrixParticles;
 
@@ -25,12 +34,6 @@ __device__ int counterDensitiesDone = 0;
 __device__ int counterPredictedPositionsDone = 0;
 __device__ int counterFutureVelocitiesDone = 0;
 
-
-
-struct Range {
-	int start;
-	int end;
-};
 
 __device__ Range getParticlesInCell(Vector2D position, int particleRadiusOfRepel,
 	int* lengths, size_t interactionMatrixRows, size_t interactionMatrixCols,
@@ -844,42 +847,111 @@ __global__ void MergeSortGPU(Particle* arr, Particle* temp, int n, int width, in
 	}
 }
 
+__device__ Range divideEtImpera(Particle* particles, int left, int right, int particleRadiusOfRepel, int expectedPosition,
+	int interactionMatrixCols) {
+
+	int mid = left + (right - left) / 2;
+
+	int row = particles[mid].m_Position.Y / particleRadiusOfRepel;
+	int col = particles[mid].m_Position.X / particleRadiusOfRepel;
+
+	int position = row * interactionMatrixCols + col;
+
+	if (position == expectedPosition) {
+		Range range;
+
+		int index = mid;
+		do {
+			index--;
+			int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
+			int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
+
+			int currentPosition = currentRow * interactionMatrixCols + currentCol;
+
+			if (currentPosition != expectedPosition) {
+				range.start = index + 1;
+				break;
+			}
+		} while (index >= 0);
+
+		index = mid;
+		do {
+			index++;
+			int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
+			int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
+
+			int currentPosition = currentRow * interactionMatrixCols + currentCol;
+
+			if (currentPosition != expectedPosition) {
+				range.end = index;
+				break;
+			}
+		} while (index < right);
+
+		return range;
+	}
+
+	if (left >= right) {
+		return Range{ 0,0 };
+	}
+
+	if (position < expectedPosition) {
+		return divideEtImpera(particles, mid + 1, right, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
+	}
+	else {
+		return divideEtImpera(particles, left, mid - 1, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
+	}
+}
+
 __global__ void setLengths(Particle* particles, int particlesSize, int particleRadiusOfRepel, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	int currentRow = -1;
-	int currentCol = -1;
+	/*int row = index / interactionMatrixCols;
+	int col = index % interactionMatrixCols;*/
 
-	int lastIndex = 0;
-
-	for (int i = 0; i < particlesSize; i++) {
-		Particle particle = particles[i];
-		Vector2D point = particle.m_Position;
-
-		//printf("index: %d, point: %f %f \n", index, point.X, point.Y);
-
-		int row = point.Y / particleRadiusOfRepel;
-		int col = point.X / particleRadiusOfRepel;
-
-		if (row < 0 || row >= interactionMatrixRows || col < 0 || col >= interactionMatrixCols) {
-			continue;
-		}
-
-		if (row != currentRow || col != currentCol) {
-			currentRow = row;
-			currentCol = col;
-
-			if (row != 0 || col != 0) {
-				lengths[lastIndex].end = i;
-			}
-
-			lengths[row * interactionMatrixCols + col] = Range{ i, 0 };
-
-			lastIndex = row * interactionMatrixCols + col;
-		}
+	if (index >= interactionMatrixRows * interactionMatrixCols) {
+		return;
 	}
 
-	lengths[lastIndex].end = particlesSize;
+
+	lengths[index] = divideEtImpera(particles, 0, particlesSize - 1, particleRadiusOfRepel, index, interactionMatrixCols);
+	printf("index: %d, start: %d, end: %d \n", index, lengths[index].start, lengths[index].end);
+
+	//
+
+	//int currentRow = -1;
+	//int currentCol = -1;
+
+	//int lastIndex = 0;
+
+	//for (int i = 0; i < particlesSize; i++) {
+	//	Particle particle = particles[i];
+	//	Vector2D point = particle.m_Position;
+
+	//	//printf("index: %d, point: %f %f \n", index, point.X, point.Y);
+
+	//	int row = point.Y / particleRadiusOfRepel;
+	//	int col = point.X / particleRadiusOfRepel;
+
+	//	if (row < 0 || row >= interactionMatrixRows || col < 0 || col >= interactionMatrixCols) {
+	//		continue;
+	//	}
+
+	//	if (row != currentRow || col != currentCol) {
+	//		currentRow = row;
+	//		currentCol = col;
+
+	//		if (row != 0 || col != 0) {
+	//			lengths[lastIndex].end = i;
+	//		}
+
+	//		lengths[row * interactionMatrixCols + col] = Range{ i, 0 };
+
+	//		lastIndex = row * interactionMatrixCols + col;
+	//	}
+	//}
+
+	//lengths[lastIndex].end = particlesSize;
 }
 
 __global__ void bubbleSort(Particle* particles, int particlesSize, int particleRadiusOfRepel) {
@@ -908,6 +980,34 @@ __global__ void bubbleSort(Particle* particles, int particlesSize, int particleR
 
 }
 
+void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize) {
+
+	//cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
+	//cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
+	//cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+
+	//// Copy data from CPU to GPU
+	//cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
+	//cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+
+
+	// Allocate memory on GPU
+	cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
+
+	Range* hostLengths = new Range[interactionMatrixSize]{ Range{0,0} };
+	cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
+
+	delete[] hostLengths;
+}
+
+void GpuFree() {
+	// Free GPU memory
+	/*cudaFree(deviceParticles);
+	cudaFree(deviceTemporary);
+	cudaFree(deviceObstacles);*/
+	cudaFree(lengths);
+}
+
 void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols,
@@ -915,7 +1015,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
-	Surface2D* deviceObstacles;
+	//Surface2D* deviceObstacles;
 
 	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
 	cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
@@ -939,18 +1039,17 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	}
 	//bubbleSort<<<1, 1 >> > (deviceParticles, particles.size(), particleRadiusOfRepel);
 	//cudaDeviceSynchronize();
-	Range* hostLengths = new Range[interactionMatrixSize]{ Range{0,0} };
-	Range* lengths;
-
 
 
 	// Allocate memory on GPU
-	cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
+	//cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
 	//cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
 
-	setLengths << < 1, 1 >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+	setLengths << < 1, interactionMatrixRows* interactionMatrixCols >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
 		lengths, interactionMatrixRows, interactionMatrixCols);
 	cudaDeviceSynchronize();
+
+	printf("lengths done\n");
 
 	int numThreads = particles.size();
 	int maxThreadsPerBlock = 1024;
@@ -981,12 +1080,12 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	// Free output
 	delete[] output;
-	delete[] hostLengths;
+	//delete[] hostLengths;
 
 	// Free GPU memory
 	cudaFree(deviceParticles);
 	cudaFree(deviceTemporary);
 	cudaFree(deviceObstacles);
-	cudaFree(lengths);
+	//cudaFree(lengths);
 
 }

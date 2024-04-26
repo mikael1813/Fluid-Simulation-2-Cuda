@@ -35,6 +35,9 @@ constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
 constexpr int THREAD_COUNT = 4;
 
+int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
+int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;
+
 float ExampleFunction(Vector2D point) {
 	return cos(point.Y - 3 + sin(point.X));
 }
@@ -92,7 +95,10 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
+	std::vector<Particle> temporaryParticles;
+	std::vector<Surface2D> temporaryObstacles;
 
+	GpuAllocate(temporaryParticles, temporaryObstacles, interactionMatrixRows * interactionMatrixCols);
 }
 
 #include<windows.h>
@@ -106,6 +112,8 @@ Environment::~Environment()
 	for (auto& pipe : m_Pipes) {
 		delete pipe;
 	}
+
+	GpuFree();
 }
 
 void Environment::renderParticles(int width, int height) {
@@ -596,8 +604,8 @@ void Environment::newUpdate(float dt) {
 		temporaryParticles.push_back(*particle);
 	}
 
-	int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
-	int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;
+	/*int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
+	int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;*/
 
 	time1 = std::chrono::steady_clock::now();
 
