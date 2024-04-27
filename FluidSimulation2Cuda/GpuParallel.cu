@@ -1018,13 +1018,14 @@ __global__ void bubbleSort(Particle* particles, int particlesSize, int particleR
 
 void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize) {
 
+	// Allocate memory on GPU
 	//cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
 	//cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
-	//cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
 
-	//// Copy data from CPU to GPU
+	// Copy data from CPU to GPU
 	//cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-	//cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
 
 
 	// Allocate memory on GPU
@@ -1039,8 +1040,8 @@ void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obsta
 void GpuFree() {
 	// Free GPU memory
 	/*cudaFree(deviceParticles);
-	cudaFree(deviceTemporary);
 	cudaFree(deviceObstacles);*/
+	cudaFree(deviceTemporary);
 	cudaFree(lengths);
 }
 
@@ -1055,11 +1056,9 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
 	cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
-	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
 
 	// Copy data from CPU to GPU
 	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
 
 	// TODO use merge sort to sort particles by cell
 
@@ -1124,7 +1123,6 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	// Free GPU memory
 	cudaFree(deviceParticles);
 	cudaFree(deviceTemporary);
-	cudaFree(deviceObstacles);
 	//cudaFree(lengths);
 
 }

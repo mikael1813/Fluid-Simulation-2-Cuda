@@ -96,9 +96,8 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
 	std::vector<Particle> temporaryParticles;
-	std::vector<Surface2D> temporaryObstacles;
 
-	GpuAllocate(temporaryParticles, temporaryObstacles, interactionMatrixRows * interactionMatrixCols);
+	GpuAllocate(temporaryParticles, m_Obstacles, interactionMatrixRows * interactionMatrixCols);
 }
 
 #include<windows.h>
