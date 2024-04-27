@@ -17,7 +17,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 3000;
+constexpr auto particleCount = 2048;
 
 constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
@@ -592,7 +592,7 @@ void Environment::newUpdate(float dt) {
 
 	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
 
-	std::sort(m_Particles.begin(), m_Particles.end(), customCompare);
+	//std::sort(m_Particles.begin(), m_Particles.end(), customCompare);
 
 	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
 	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
