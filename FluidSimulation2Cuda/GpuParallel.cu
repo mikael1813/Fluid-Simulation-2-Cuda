@@ -963,16 +963,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
-	//cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
-	//cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-
 	//Set number of threads and blocks for kernel calls
 	int threadsPerBlock = maxThreadsPerBlock;
 	int blocksPerGrid = (particles.size() + threadsPerBlock - 1) / threadsPerBlock;
 	int k, j;
-
-	//demo << <1, 1 >> > (deviceParticles, particles.size());
-	//cudaDeviceSynchronize();
 
 	// Bitonic Sort
 	for (k = 2; k <= particles.size(); k <<= 1)
@@ -982,51 +976,33 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 			bitonicSortGPU << <blocksPerGrid, threadsPerBlock >> > (deviceParticles, j, k, particleRadiusOfRepel);
 		}
 	}
-	cudaDeviceSynchronize();
-
-	//printf("\n\n\n 111111111111111111111111111111111 \n\n\n");
-
-	//demo << <1, 1 >> > (deviceParticles, particles.size());
-	//cudaDeviceSynchronize();
 
 	int blockSize = (interactionMatrixSize < maxThreadsPerBlock) ? interactionMatrixSize : maxThreadsPerBlock;
 	int numBlocks = (interactionMatrixSize + blockSize - 1) / blockSize;
+
+	cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for setting lengths
 	setLengths << < numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
 		lengths, interactionMatrixRows, interactionMatrixCols);
 
-	// Wait for kernel to finish
-	//cudaDeviceSynchronize();
-
-	//printf("\n\n\n 2222222222222222222222222222222222 \n\n\n");
-
-	//demo << <1, 1 >> > (deviceParticles, particles.size());
-	//cudaDeviceSynchronize();
-
 	resetGlobalCounter << <1, 1 >> > ();
-
-	// Wait for kernel to finish
-	cudaDeviceSynchronize();
 
 	blockSize = (particles.size() < maxThreadsPerBlock) ? particles.size() : maxThreadsPerBlock;
 	numBlocks = (particles.size() + blockSize - 1) / blockSize;
 
-	//printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
-
-	//demo << <1, 1 >> > (deviceParticles, particles.size());
-	//cudaDeviceSynchronize();
+	// Wait for kernel to finish
+	cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for updating particles
 	specialUpdateKernel << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
 
+	Particle* output = new Particle[particles.size()];
+
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
-
-
-	Particle* output = new Particle[particles.size()];
 
 	cudaMemcpy(output, deviceParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
 

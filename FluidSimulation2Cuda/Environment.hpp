@@ -21,7 +21,7 @@ public:
 	void newUpdate(float dt);
 
 private:
-	std::vector<Particle*> m_Particles;
+	std::vector<Particle> m_Particles;
 	std::vector<float> m_ParticleProperties;
 	std::vector<float> m_ParticleDensities;
 
