@@ -8,7 +8,7 @@
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
-constexpr int maxThreadsPerBlock = 512;
+constexpr int maxThreadsPerBlock = 256;
 
 struct Range {
 	int start;

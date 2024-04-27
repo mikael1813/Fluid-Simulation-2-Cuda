@@ -1,5 +1,4 @@
 #include "Environment.hpp"
-#include "InteractionMatrixClass.hpp"
 #include "Graphics.hpp"
 #include "GpuParallel.cuh"
 
@@ -95,12 +94,6 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
-	/*std::vector<Particle> temporaryParticles;
-
-	for (auto& particle : m_Particles) {
-		temporaryParticles.push_back(particle);
-	}*/
-
 	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols);
 }
 
@@ -139,6 +132,9 @@ void Environment::renderParticles(int width, int height) {
 
 void Environment::render(int width, int height)
 {
+
+	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+
 	/*float maxDensity = 0.0f;
 	for (auto& particle : m_Particles) {
 
@@ -158,134 +154,12 @@ void Environment::render(int width, int height)
 		glColor3f(1.0, 1.0, 1.0);
 		Graphics::DrawLine(width, height, obstacle.Point1, obstacle.Point2);
 	}
-}
 
-//void Environment::update(float dt) {
-//
-//	//std::cout<<"A"<<std::endl;
-//
-//	//std::cout<<"B"<<std::endl;
-//
-//	// calculate predicted positions
-//	for (auto& particle : m_Particles) {
-//		particle->m_PredictedPosition = particle->getPosition() + particle->getVelocity() * dt * HOW_FAR_INTO_THE_FUTURE;
-//	}
-//
-//	//std::cout<<"C"<<std::endl;
-//
-//	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-//	InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
-//
-//
-//	//std::cout<<"D"<<std::endl;
-//
-//	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
-//	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
-//
-//	for (auto& pipe : m_Pipes) {
-//		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
-//	}
-//
-//	std::vector<Particle> temporaryParticles;
-//
-//	time1 = std::chrono::steady_clock::now();
-//
-//	//this->updateParticleDensities(0, m_Particles.size());
-//	//this->parallelUpdateParticleDensities();
-//
-//	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
-//
-//	for (auto& particle : m_Particles) {
-//		temporaryParticles.push_back(*particle);
-//	}
-//
-//	GpuParallelUpdateParticleDensities(temporaryParticles, particleRadiusOfRepel);
-//
-//	GpuFreeInteractionMatrix();
-//
-//	for (int i = 0; i < m_Particles.size(); i++) {
-//		m_Particles.at(i)->m_Density = temporaryParticles.at(i).m_Density;
-//	}
-//
-//	time2 = std::chrono::steady_clock::now();
-//	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
-//
-//	time1 = std::chrono::steady_clock::now();
-//
-//	//this->calculateFutureVelocities(dt, 0, m_Particles.size());
-//	//this->parallelCalculateFutureVelocities(dt);
-//
-//	temporaryParticles.clear();
-//
-//	for (auto& particle : m_Particles) {
-//		temporaryParticles.push_back(*particle);
-//	}
-//
-//	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
-//
-//	GpuParallelCalculateFutureVelocities(temporaryParticles, particleRadiusOfRepel, particleRadius, dt);
-//
-//	GpuFreeInteractionMatrix();
-//
-//	for (int i = 0; i < m_Particles.size(); i++) {
-//		m_Particles.at(i)->m_FutureVelocity = temporaryParticles.at(i).m_FutureVelocity;
-//		m_Particles.at(i)->m_Velocity = temporaryParticles.at(i).m_Velocity;
-//		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
-//		m_Particles.at(i)->m_TemporaryVelocity = temporaryParticles.at(i).m_TemporaryVelocity;
-//		m_Particles.at(i)->m_PredictedPosition = temporaryParticles.at(i).m_PredictedPosition;
-//		m_Particles.at(i)->m_LastSafePosition = temporaryParticles.at(i).m_LastSafePosition;
-//	}
-//
-//	time2 = std::chrono::steady_clock::now();
-//	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
-//
-//	//time1 = std::chrono::steady_clock::now();
-//
-//	//std::cout<<"F"<<std::endl;
-//
-//	// apply future velocities to current velocities
-//	/*for (auto& particle : m_Particles) {
-//		particle->updateVelocity();
-//		particle->update(dt);
-//		particle->m_PredictedPosition = particle->getPosition();
-//	}*/
-//
-//	//std::cout<<"G"<<std::endl;
-//
-//	//InteractionMatrixClass::getInstance()->updateInteractionMatrix(m_Particles, particleRadiusOfRepel);
-//
-//	//std::cout<<"H"<<std::endl;
-//
-//	time1 = std::chrono::steady_clock::now();
-//
-//	//this->checkCollisions(0, m_Particles.size());
-//	//this->parallelCheckCollisions();
-//
-//
-//	temporaryParticles.clear();
-//
-//	for (auto& particle : m_Particles) {
-//		temporaryParticles.push_back(*particle);
-//	}
-//
-//
-//	GpuAllocateInteractionMatrix(InteractionMatrixClass::getInstance());
-//
-//	//GpuParallelCheckCollision(temporaryParticles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles);
-//
-//	GpuFreeInteractionMatrix();
-//
-//	for (int i = 0; i < m_Particles.size(); i++) {
-//		m_Particles.at(i)->m_Velocity = temporaryParticles.at(i).m_Velocity;
-//		m_Particles.at(i)->m_TemporaryVelocity = temporaryParticles.at(i).m_TemporaryVelocity;
-//		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
-//	}
-//
-//	time2 = std::chrono::steady_clock::now();
-//	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
-//
-//	int x = 0;
-//}
+	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
+
+	int x = 0;
+}
 
 bool customCompare(Particle* a, Particle* b) {
 	// Define your custom comparison logic here
@@ -313,29 +187,10 @@ void Environment::newUpdate(float dt) {
 	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
 	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
-	/*std::vector<Particle> temporaryParticles;
-
-	for (auto& particle : m_Particles) {
-		temporaryParticles.push_back(*particle);
-	}*/
-
-	/*int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
-	int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;*/
-
 	time1 = std::chrono::steady_clock::now();
 
 	GpuUpdateParticles(m_Particles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
 		interactionMatrixRows, interactionMatrixCols, InteractionMatrixClass::getInstance());
-
-	/*for (int i = 0; i < m_Particles.size(); i++) {
-		m_Particles.at(i)->m_Density = temporaryParticles.at(i).m_Density;
-		m_Particles.at(i)->m_FutureVelocity = temporaryParticles.at(i).m_FutureVelocity;
-		m_Particles.at(i)->m_Velocity = temporaryParticles.at(i).m_Velocity;
-		m_Particles.at(i)->m_Position = temporaryParticles.at(i).m_Position;
-		m_Particles.at(i)->m_TemporaryVelocity = temporaryParticles.at(i).m_TemporaryVelocity;
-		m_Particles.at(i)->m_PredictedPosition = temporaryParticles.at(i).m_PredictedPosition;
-		m_Particles.at(i)->m_LastSafePosition = temporaryParticles.at(i).m_LastSafePosition;
-	}*/
 
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
