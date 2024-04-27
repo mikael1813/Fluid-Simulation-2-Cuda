@@ -808,90 +808,56 @@ void GpuParallelCheckCollision(std::vector<Particle>& particles, int particleRad
 __device__ Range divideEtImpera(Particle* particles, int left, int right, int particlesSize,
 	int particleRadiusOfRepel, int expectedPosition, int interactionMatrixCols) {
 
-	if (left >= right) {
-		//printf("112left: %d, right: %d, expectedPosition: %d \n", left, right, expectedPosition);
-		return Range{ 0,0 };
-	}
-
-	int mid = left + (right - left) / 2;
-
-	int row = particles[mid].m_Position.Y / particleRadiusOfRepel;
-	int col = particles[mid].m_Position.X / particleRadiusOfRepel;
-
-	int position = row * interactionMatrixCols + col;
-
-	//printf("left: %d, right: %d, expectedPosition: %d, mid: %d, position: %d \n", left, right, expectedPosition, mid, position);
-
-	if (position == expectedPosition) {
-		Range range{ 0,0 };
-
-		int index = mid;
-		do {
-			int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
-			int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
-
-			int currentPosition = currentRow * interactionMatrixCols + currentCol;
-
-			if (currentPosition != expectedPosition) {
-				range.start = index + 1;
-				break;
-			}
-			index--;
-		} while (index >= 0);
-
-		index = mid;
-		do {
-			int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
-			int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
-
-			int currentPosition = currentRow * interactionMatrixCols + currentCol;
-
-			if (currentPosition != expectedPosition) {
-				range.end = index;
-				break;
-			}
-			index++;
-		} while (index < particlesSize);
-		if (index >= particlesSize) {
-			range.end = particlesSize;
+	do {
+		if (left >= right) {
+			return Range{ 0,0 };
 		}
 
-		// print ranges
-		//printf("left: %d, right: %d, expectedPosition: %d, mid: %d, position: %d, start: %d, end: %d \n", left, right, expectedPosition, mid, position, range.start, range.end);
+		int mid = left + (right - left) / 2;
 
-		//printf("113left: %d, right: %d, expectedPosition: %d, mid: %d, position: %d \n", left, right, expectedPosition, mid, position);
-		return range;
-	}
+		int row = particles[mid].m_Position.Y / particleRadiusOfRepel;
+		int col = particles[mid].m_Position.X / particleRadiusOfRepel;
 
-	if (position < expectedPosition) {
-		return divideEtImpera(particles, mid + 1, right, particlesSize, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
-	}
-	else {
-		return divideEtImpera(particles, left, mid - 1, particlesSize, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
-	}
+		int position = row * interactionMatrixCols + col;
 
-	/*bool first = true;
-	Range range;
-	for (int i = left; i <= right; i++) {
-		int row = particles[i].m_Position.Y / particleRadiusOfRepel;
-		int col = particles[i].m_Position.X / particleRadiusOfRepel;
+		if (position == expectedPosition) {
+			Range range{ 0,0 };
 
-		if (row * interactionMatrixCols + col == expectedPosition) {
-			if (first) {
-				first = false;
-				range.start = i;
+			for (int index = mid; index >= 0; index--) {
+				int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
+				int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
+
+				int currentPosition = currentRow * interactionMatrixCols + currentCol;
+
+				if (currentPosition != expectedPosition) {
+					range.start = index + 1;
+					break;
+				}
 			}
+
+			range.end = particlesSize;
+			for (int index = mid; index < particlesSize; index++) {
+				int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
+				int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
+
+				int currentPosition = currentRow * interactionMatrixCols + currentCol;
+
+				if (currentPosition != expectedPosition) {
+					range.end = index;
+					break;
+				}
+			}
+
+			return range;
+		}
+
+		if (position < expectedPosition) {
+			left = mid + 1;
 		}
 		else {
-			if (!first) {
-				range.end = i;
-				return range;
-			}
+			right = mid - 1;
 		}
-	}
-	range.end = right + 1;
-	return range;*/
-
+	} while (true);
 }
 
 __global__ void setLengths(Particle* particles, int particlesSize, int particleRadiusOfRepel, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
@@ -1084,7 +1050,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
 
-	demo<<<1,1>>>(deviceParticles, particles.size());
+	demo << <1, 1 >> > (deviceParticles, particles.size());
 	cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for updating particles

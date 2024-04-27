@@ -17,7 +17,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 1024;
+constexpr auto particleCount = 4096;
 
 constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
