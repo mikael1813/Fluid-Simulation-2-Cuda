@@ -8,6 +8,8 @@
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
+constexpr int maxThreadsPerBlock = 1024;
+
 struct Range {
 	int start;
 	int end;
@@ -847,8 +849,13 @@ __global__ void MergeSortGPU(Particle* arr, Particle* temp, int n, int width, in
 	}
 }
 
-__device__ Range divideEtImpera(Particle* particles, int left, int right, int particleRadiusOfRepel, int expectedPosition,
-	int interactionMatrixCols) {
+__device__ Range divideEtImpera(Particle* particles, int left, int right, int particlesSize,
+	int particleRadiusOfRepel, int expectedPosition, int interactionMatrixCols) {
+
+	if (left >= right) {
+		//printf("112left: %d, right: %d, expectedPosition: %d \n", left, right, expectedPosition);
+		return Range{ 0,0 };
+	}
 
 	int mid = left + (right - left) / 2;
 
@@ -857,8 +864,10 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 
 	int position = row * interactionMatrixCols + col;
 
+	//printf("left: %d, right: %d, expectedPosition: %d, mid: %d, position: %d \n", left, right, expectedPosition, mid, position);
+
 	if (position == expectedPosition) {
-		Range range;
+		Range range{ 0,0 };
 
 		int index = mid;
 		do {
@@ -886,21 +895,47 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 				range.end = index;
 				break;
 			}
-		} while (index < right);
+		} while (index < particlesSize);
+		if (index >= particlesSize) {
+			range.end = particlesSize;
+		}
 
+		// print ranges
+		//printf("left: %d, right: %d, expectedPosition: %d, mid: %d, position: %d, start: %d, end: %d \n", left, right, expectedPosition, mid, position, range.start, range.end);
+
+		//printf("113left: %d, right: %d, expectedPosition: %d, mid: %d, position: %d \n", left, right, expectedPosition, mid, position);
 		return range;
 	}
 
-	if (left >= right) {
-		return Range{ 0,0 };
-	}
-
 	if (position < expectedPosition) {
-		return divideEtImpera(particles, mid + 1, right, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
+		return divideEtImpera(particles, mid + 1, right, particlesSize, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
 	}
 	else {
-		return divideEtImpera(particles, left, mid - 1, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
+		return divideEtImpera(particles, left, mid - 1, particlesSize, particleRadiusOfRepel, expectedPosition, interactionMatrixCols);
 	}
+
+	/*bool first = true;
+	Range range;
+	for (int i = left; i <= right; i++) {
+		int row = particles[i].m_Position.Y / particleRadiusOfRepel;
+		int col = particles[i].m_Position.X / particleRadiusOfRepel;
+
+		if (row * interactionMatrixCols + col == expectedPosition) {
+			if (first) {
+				first = false;
+				range.start = i;
+			}
+		}
+		else {
+			if (!first) {
+				range.end = i;
+				return range;
+			}
+		}
+	}
+	range.end = right + 1;
+	return range;*/
+
 }
 
 __global__ void setLengths(Particle* particles, int particlesSize, int particleRadiusOfRepel, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
@@ -913,9 +948,10 @@ __global__ void setLengths(Particle* particles, int particlesSize, int particleR
 		return;
 	}
 
+	//printf("index: %d, start: %d, end: %d \n", index, lengths[index].start, lengths[index].end);
+	lengths[index] = divideEtImpera(particles, 0, particlesSize - 1, particlesSize,
+		particleRadiusOfRepel, index, interactionMatrixCols);
 
-	lengths[index] = divideEtImpera(particles, 0, particlesSize - 1, particleRadiusOfRepel, index, interactionMatrixCols);
-	printf("index: %d, start: %d, end: %d \n", index, lengths[index].start, lengths[index].end);
 
 	//
 
@@ -1045,23 +1081,27 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	//cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
 	//cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
 
-	setLengths << < 1, interactionMatrixRows* interactionMatrixCols >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+	int interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
+
+	int blockSize = (interactionMatrixSize < maxThreadsPerBlock) ? interactionMatrixSize : maxThreadsPerBlock;
+	int numBlocks = (interactionMatrixSize + blockSize - 1) / blockSize;
+
+	// Launch CUDA kernel for setting lengths
+	setLengths << < numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
 		lengths, interactionMatrixRows, interactionMatrixCols);
-	cudaDeviceSynchronize();
 
-	printf("lengths done\n");
-
-	int numThreads = particles.size();
-	int maxThreadsPerBlock = 1024;
-
-	int blockSize = maxThreadsPerBlock;
-	int numBlocks = (numThreads + blockSize - 1) / blockSize;
-
-	resetGlobalCounter << <1, 1 >> > ();
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
 
-	// Launch CUDA kernel
+	resetGlobalCounter << <1, 1 >> > ();
+
+	// Wait for kernel to finish
+	cudaDeviceSynchronize();
+
+	blockSize = (particles.size() < maxThreadsPerBlock) ? particles.size() : maxThreadsPerBlock;
+	numBlocks = (particles.size() + blockSize - 1) / blockSize;
+
+	// Launch CUDA kernel for updating particles
 	specialUpdateKernel << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
@@ -1069,7 +1109,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
 
-	// Using std::unique_ptr to manage memory
+	
 	Particle* output = new Particle[particles.size()];
 
 	cudaMemcpy(output, deviceParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
@@ -1080,7 +1120,6 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	// Free output
 	delete[] output;
-	//delete[] hostLengths;
 
 	// Free GPU memory
 	cudaFree(deviceParticles);
