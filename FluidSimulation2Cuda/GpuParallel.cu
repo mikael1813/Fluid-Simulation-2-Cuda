@@ -8,16 +8,15 @@
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
-constexpr int maxThreadsPerBlock = 1024;
+constexpr int maxThreadsPerBlock = 512;
 
 struct Range {
 	int start;
 	int end;
 };
 
-// Allocate memory on GPU
+
 Particle* deviceParticles;
-Particle* deviceTemporary;
 
 Range* lengths;
 
@@ -532,6 +531,8 @@ __global__ void specialUpdateKernel(Particle* particles, int praticlesSize, int 
 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
+	//printf("important index: %d \n", index);
+
 	if (index >= praticlesSize) {
 		return;
 	}
@@ -826,7 +827,6 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 
 		int index = mid;
 		do {
-			index--;
 			int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
 			int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
 
@@ -836,11 +836,11 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 				range.start = index + 1;
 				break;
 			}
+			index--;
 		} while (index >= 0);
 
 		index = mid;
 		do {
-			index++;
 			int currentRow = particles[index].m_Position.Y / particleRadiusOfRepel;
 			int currentCol = particles[index].m_Position.X / particleRadiusOfRepel;
 
@@ -850,6 +850,7 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 				range.end = index;
 				break;
 			}
+			index++;
 		} while (index < particlesSize);
 		if (index >= particlesSize) {
 			range.end = particlesSize;
@@ -895,9 +896,6 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 
 __global__ void setLengths(Particle* particles, int particlesSize, int particleRadiusOfRepel, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
-
-	/*int row = index / interactionMatrixCols;
-	int col = index % interactionMatrixCols;*/
 
 	if (index >= interactionMatrixRows * interactionMatrixCols) {
 		return;
@@ -994,37 +992,38 @@ __global__ void bitonicSortGPU(Particle* arr, int j, int k, int particleRadiusOf
 
 void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize) {
 
+	cudaError_t cudaStatus;
+
 	// Allocate memory on GPU
-	//cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
-	//cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
-	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+	cudaStatus = cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
+	cudaStatus = cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
 
 	// Copy data from CPU to GPU
-	//cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+	cudaStatus = cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
+	cudaStatus = cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
 
 
 	// Allocate memory on GPU
-	cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
+	cudaStatus = cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
 
 	Range* hostLengths = new Range[interactionMatrixSize]{ Range{0,0} };
-	cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
+	cudaStatus = cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
 
 	delete[] hostLengths;
 }
 
 void GpuFree() {
 	// Free GPU memory
-	/*cudaFree(deviceParticles);
-	cudaFree(deviceObstacles);*/
-	cudaFree(deviceTemporary);
+	cudaFree(deviceParticles);
+	cudaFree(deviceObstacles);
 	cudaFree(lengths);
 }
 
 __global__ void demo(Particle* particles, int particlesSize) {
-	for (int i = 0; i < particlesSize; i++) {
+	printf("particlesSize: %d \n", particlesSize);
+	/*for (int i = 0; i < particlesSize; i++) {
 		printf("index: %d, position: %f %f \n", i, particles[i].m_Position.X, particles[i].m_Position.Y);
-	}
+	}*/
 }
 
 void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRepel,
@@ -1034,21 +1033,18 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
-	//Surface2D* deviceObstacles;
-
-	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
-	cudaMalloc(&deviceTemporary, particles.size() * sizeof(Particle));
-
-	// Copy data from CPU to GPU
-	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
-
-	// TODO use merge sort to sort particles by cell
+	//cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
+	//cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
 
 	//Set number of threads and blocks for kernel calls
 	int threadsPerBlock = maxThreadsPerBlock;
 	int blocksPerGrid = (particles.size() + threadsPerBlock - 1) / threadsPerBlock;
 	int k, j;
 
+	demo << <1, 1 >> > (deviceParticles, particles.size());
+	cudaDeviceSynchronize();
+
+	// Bitonic Sort
 	for (k = 2; k <= particles.size(); k <<= 1)
 	{
 		for (j = k >> 1; j > 0; j = j >> 1)
@@ -1058,12 +1054,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	}
 	cudaDeviceSynchronize();
 
-	//demo << <1, 1 >> > (deviceParticles, particles.size());
-	// Allocate memory on GPU
-	//cudaMalloc(&lengths, interactionMatrixSize * sizeof(Range));
-	//cudaMemcpy(lengths, hostLengths, interactionMatrixSize * sizeof(Range), cudaMemcpyHostToDevice);
+	printf("\n\n\n 111111111111111111111111111111111 \n\n\n");
 
-	int interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
+	demo << <1, 1 >> > (deviceParticles, particles.size());
+	cudaDeviceSynchronize();
 
 	int blockSize = (interactionMatrixSize < maxThreadsPerBlock) ? interactionMatrixSize : maxThreadsPerBlock;
 	int numBlocks = (interactionMatrixSize + blockSize - 1) / blockSize;
@@ -1073,6 +1067,11 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 		lengths, interactionMatrixRows, interactionMatrixCols);
 
 	// Wait for kernel to finish
+	//cudaDeviceSynchronize();
+
+	printf("\n\n\n 2222222222222222222222222222222222 \n\n\n");
+
+	demo << <1, 1 >> > (deviceParticles, particles.size());
 	cudaDeviceSynchronize();
 
 	resetGlobalCounter << <1, 1 >> > ();
@@ -1082,6 +1081,11 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	blockSize = (particles.size() < maxThreadsPerBlock) ? particles.size() : maxThreadsPerBlock;
 	numBlocks = (particles.size() + blockSize - 1) / blockSize;
+
+	printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
+
+	demo<<<1,1>>>(deviceParticles, particles.size());
+	cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for updating particles
 	specialUpdateKernel << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
@@ -1102,10 +1106,4 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 
 	// Free output
 	delete[] output;
-
-	// Free GPU memory
-	cudaFree(deviceParticles);
-	cudaFree(deviceTemporary);
-	//cudaFree(lengths);
-
 }

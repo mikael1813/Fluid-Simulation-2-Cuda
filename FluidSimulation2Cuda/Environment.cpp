@@ -17,7 +17,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 2048;
+constexpr auto particleCount = 1024;
 
 constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
@@ -96,6 +96,10 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
 	std::vector<Particle> temporaryParticles;
+
+	for (auto& particle : m_Particles) {
+		temporaryParticles.push_back(*particle);
+	}
 
 	GpuAllocate(temporaryParticles, m_Obstacles, interactionMatrixRows * interactionMatrixCols);
 }
