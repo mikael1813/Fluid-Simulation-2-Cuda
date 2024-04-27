@@ -8,7 +8,7 @@
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
 
-constexpr int maxThreadsPerBlock = 512;
+constexpr int maxThreadsPerBlock = 1024;
 
 struct Range {
 	int start;
@@ -807,14 +807,14 @@ void GpuParallelCheckCollision(std::vector<Particle>& particles, int particleRad
 
 __device__ Range divideEtImpera(Particle* particles, int left, int right, int particlesSize,
 	int particleRadiusOfRepel, int expectedPosition, int interactionMatrixCols) {
-
+	
 	if (left >= right) {
 		//printf("112left: %d, right: %d, expectedPosition: %d \n", left, right, expectedPosition);
 		return Range{ 0,0 };
 	}
 
 	int mid = left + (right - left) / 2;
-
+	
 	int row = particles[mid].m_Position.Y / particleRadiusOfRepel;
 	int col = particles[mid].m_Position.X / particleRadiusOfRepel;
 
@@ -834,10 +834,11 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 
 			if (currentPosition != expectedPosition) {
 				range.start = index + 1;
+				index = -1;
 				break;
 			}
 			index--;
-		} while (index >= 0);
+		} while (index >= 0 && index < particlesSize);
 
 		index = mid;
 		do {
@@ -848,10 +849,11 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 
 			if (currentPosition != expectedPosition) {
 				range.end = index;
+				index = particlesSize;
 				break;
 			}
 			index++;
-		} while (index < particlesSize);
+		} while (index >= 0 && index < particlesSize);
 		if (index >= particlesSize) {
 			range.end = particlesSize;
 		}
@@ -896,7 +898,8 @@ __device__ Range divideEtImpera(Particle* particles, int left, int right, int pa
 
 __global__ void setLengths(Particle* particles, int particlesSize, int particleRadiusOfRepel, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
-
+	//printf("index: %d \n", index);
+	
 	if (index >= interactionMatrixRows * interactionMatrixCols) {
 		return;
 	}
@@ -1041,8 +1044,8 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	int blocksPerGrid = (particles.size() + threadsPerBlock - 1) / threadsPerBlock;
 	int k, j;
 
-	demo << <1, 1 >> > (deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	// Bitonic Sort
 	for (k = 2; k <= particles.size(); k <<= 1)
@@ -1054,10 +1057,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	}
 	cudaDeviceSynchronize();
 
-	printf("\n\n\n 111111111111111111111111111111111 \n\n\n");
+	//printf("\n\n\n 111111111111111111111111111111111 \n\n\n");
 
-	demo << <1, 1 >> > (deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	int blockSize = (interactionMatrixSize < maxThreadsPerBlock) ? interactionMatrixSize : maxThreadsPerBlock;
 	int numBlocks = (interactionMatrixSize + blockSize - 1) / blockSize;
@@ -1067,12 +1070,13 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 		lengths, interactionMatrixRows, interactionMatrixCols);
 
 	// Wait for kernel to finish
-	//cudaDeviceSynchronize();
-
-	printf("\n\n\n 2222222222222222222222222222222222 \n\n\n");
-
-	demo << <1, 1 >> > (deviceParticles, particles.size());
 	cudaDeviceSynchronize();
+
+
+	//printf("\n\n\n 2222222222222222222222222222222222 \n\n\n");
+
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	resetGlobalCounter << <1, 1 >> > ();
 
@@ -1082,10 +1086,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	blockSize = (particles.size() < maxThreadsPerBlock) ? particles.size() : maxThreadsPerBlock;
 	numBlocks = (particles.size() + blockSize - 1) / blockSize;
 
-	printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
+	//printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
 
-	demo<<<1,1>>>(deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo<<<1,1>>>(deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for updating particles
 	specialUpdateKernel << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
