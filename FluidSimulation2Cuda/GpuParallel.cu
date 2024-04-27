@@ -871,42 +871,6 @@ __global__ void setLengths(Particle* particles, int particlesSize, int particleR
 	lengths[index] = divideEtImpera(particles, 0, particlesSize - 1, particlesSize,
 		particleRadiusOfRepel, index, interactionMatrixCols);
 
-
-	//
-
-	//int currentRow = -1;
-	//int currentCol = -1;
-
-	//int lastIndex = 0;
-
-	//for (int i = 0; i < particlesSize; i++) {
-	//	Particle particle = particles[i];
-	//	Vector2D point = particle.m_Position;
-
-	//	//printf("index: %d, point: %f %f \n", index, point.X, point.Y);
-
-	//	int row = point.Y / particleRadiusOfRepel;
-	//	int col = point.X / particleRadiusOfRepel;
-
-	//	if (row < 0 || row >= interactionMatrixRows || col < 0 || col >= interactionMatrixCols) {
-	//		continue;
-	//	}
-
-	//	if (row != currentRow || col != currentCol) {
-	//		currentRow = row;
-	//		currentCol = col;
-
-	//		if (row != 0 || col != 0) {
-	//			lengths[lastIndex].end = i;
-	//		}
-
-	//		lengths[row * interactionMatrixCols + col] = Range{ i, 0 };
-
-	//		lastIndex = row * interactionMatrixCols + col;
-	//	}
-	//}
-
-	//lengths[lastIndex].end = particlesSize;
 }
 
 //GPU Kernel Implementation of Bitonic Sort
@@ -1007,8 +971,8 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	int blocksPerGrid = (particles.size() + threadsPerBlock - 1) / threadsPerBlock;
 	int k, j;
 
-	demo << <1, 1 >> > (deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	// Bitonic Sort
 	for (k = 2; k <= particles.size(); k <<= 1)
@@ -1020,10 +984,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	}
 	cudaDeviceSynchronize();
 
-	printf("\n\n\n 111111111111111111111111111111111 \n\n\n");
+	//printf("\n\n\n 111111111111111111111111111111111 \n\n\n");
 
-	demo << <1, 1 >> > (deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	int blockSize = (interactionMatrixSize < maxThreadsPerBlock) ? interactionMatrixSize : maxThreadsPerBlock;
 	int numBlocks = (interactionMatrixSize + blockSize - 1) / blockSize;
@@ -1035,10 +999,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	// Wait for kernel to finish
 	//cudaDeviceSynchronize();
 
-	printf("\n\n\n 2222222222222222222222222222222222 \n\n\n");
+	//printf("\n\n\n 2222222222222222222222222222222222 \n\n\n");
 
-	demo << <1, 1 >> > (deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	resetGlobalCounter << <1, 1 >> > ();
 
@@ -1048,10 +1012,10 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	blockSize = (particles.size() < maxThreadsPerBlock) ? particles.size() : maxThreadsPerBlock;
 	numBlocks = (particles.size() + blockSize - 1) / blockSize;
 
-	printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
+	//printf("\n\n\n 33333333333333333333333333333333 \n\n\n");
 
-	demo << <1, 1 >> > (deviceParticles, particles.size());
-	cudaDeviceSynchronize();
+	//demo << <1, 1 >> > (deviceParticles, particles.size());
+	//cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for updating particles
 	specialUpdateKernel << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
