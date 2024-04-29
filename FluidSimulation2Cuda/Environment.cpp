@@ -16,9 +16,9 @@
 #include <map>
 
 
-constexpr auto particleCount = 4096;
+constexpr auto particleCount = 4096*4;
 
-constexpr auto particleRadius = 2;
+constexpr auto particleRadius = 1;
 constexpr auto particleRadiusOfRepel = 50;
 constexpr auto particleDistance = 30;
 
@@ -190,7 +190,7 @@ void Environment::newUpdate(float dt) {
 	time1 = std::chrono::steady_clock::now();
 
 	GpuUpdateParticles(m_Particles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
-		interactionMatrixRows, interactionMatrixCols, InteractionMatrixClass::getInstance());
+		interactionMatrixRows, interactionMatrixCols);
 
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
