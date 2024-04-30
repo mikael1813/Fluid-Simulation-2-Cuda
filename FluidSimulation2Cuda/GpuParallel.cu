@@ -40,12 +40,6 @@ __device__ void updateParticle(int index, Particle* particle, double dt) {
 		return;
 	}
 
-	/*if (!particle[index].m_Exists) {
-		particle[index].m_Position.X = 999999;
-		particle[index].m_Position.Y = 999999;
-		return;
-	}*/
-
 	float leapFrog = 0.95f;
 	//float leapFrog = 0.98f;
 
@@ -364,10 +358,6 @@ __global__ void specialUpdatePredictedPositions(Particle* particles, int praticl
 		return;
 	}
 
-	/*if (!particles[index].m_Exists) {
-		return;
-	}*/
-
 	Particle particle = particles[index];
 
 	GpuVector2D newPredictedPosition = GpuVector2D(particles[index].m_Position) +
@@ -387,10 +377,6 @@ __global__ void specialUpdateDensities(Particle* particles, int praticlesSize, i
 		return;
 	}
 
-	/*if (!particles[index].m_Exists) {
-		return;
-	}*/
-
 	updateParticleDensities(index, particles, praticlesSize, particleRadiusOfRepel, lengths,
 		interactionMatrixRows, interactionMatrixCols);
 }
@@ -405,10 +391,6 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 		return;
 	}
 
-	/*if (!particles[index].m_Exists) {
-		return;
-	}*/
-
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
 		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt);
 }
@@ -422,10 +404,6 @@ __global__ void specialUpdateCollisions(Particle* particles, int praticlesSize, 
 	if (index >= praticlesSize) {
 		return;
 	}
-
-	/*if (!particles[index].m_Exists) {
-		return;
-	}*/
 
 	updateCollisions(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
 		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacles, obstaclesSize);
