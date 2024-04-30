@@ -40,13 +40,14 @@ __device__ void updateParticle(int index, Particle* particle, double dt) {
 		return;
 	}
 
-	if (!particle[index].m_Exists) {
+	/*if (!particle[index].m_Exists) {
 		particle[index].m_Position.X = 999999;
 		particle[index].m_Position.Y = 999999;
 		return;
-	}
+	}*/
 
 	float leapFrog = 0.95f;
+	//float leapFrog = 0.98f;
 
 	particle[index].m_LastSafePosition = particle[index].m_Position;
 
@@ -363,9 +364,9 @@ __global__ void specialUpdatePredictedPositions(Particle* particles, int praticl
 		return;
 	}
 
-	if (!particles[index].m_Exists) {
+	/*if (!particles[index].m_Exists) {
 		return;
-	}
+	}*/
 
 	Particle particle = particles[index];
 
@@ -386,9 +387,9 @@ __global__ void specialUpdateDensities(Particle* particles, int praticlesSize, i
 		return;
 	}
 
-	if (!particles[index].m_Exists) {
+	/*if (!particles[index].m_Exists) {
 		return;
-	}
+	}*/
 
 	updateParticleDensities(index, particles, praticlesSize, particleRadiusOfRepel, lengths,
 		interactionMatrixRows, interactionMatrixCols);
@@ -404,9 +405,9 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 		return;
 	}
 
-	if (!particles[index].m_Exists) {
+	/*if (!particles[index].m_Exists) {
 		return;
-	}
+	}*/
 
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
 		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt);
@@ -422,9 +423,9 @@ __global__ void specialUpdateCollisions(Particle* particles, int praticlesSize, 
 		return;
 	}
 
-	if (!particles[index].m_Exists) {
+	/*if (!particles[index].m_Exists) {
 		return;
-	}
+	}*/
 
 	updateCollisions(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
 		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacles, obstaclesSize);
@@ -589,30 +590,30 @@ void GpuFree() {
 	cudaFree(lengths);
 }
 
-void UpdateParticlesHelper(std::vector<Particle>& particles, int particleRadiusOfRepel,
+void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols) {
 
-	int blockSize = (particles.size() < maxThreadsPerBlock) ? particles.size() : maxThreadsPerBlock;
-	int numBlocks = (particles.size() + blockSize - 1) / blockSize;
+	int blockSize = (particlesSize < maxThreadsPerBlock) ? particlesSize : maxThreadsPerBlock;
+	int numBlocks = (particlesSize + blockSize - 1) / blockSize;
 
-	specialUpdatePredictedPositions << <numBlocks, blockSize >> > (deviceParticles, particles.size(), dt);
+	specialUpdatePredictedPositions << <numBlocks, blockSize >> > (deviceParticles, particlesSize, dt);
 
 	cudaDeviceSynchronize();
 
-	specialUpdateDensities << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+	specialUpdateDensities << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
 
 	cudaDeviceSynchronize();
 
-	specialUpdateFutureVelocities << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+	specialUpdateFutureVelocities << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
 
 	cudaDeviceSynchronize();
 
-	specialUpdateCollisions << <numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+	specialUpdateCollisions << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
 
@@ -621,7 +622,7 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particleRadiusO
 }
 
 
-void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRepel,
+void GpuUpdateParticles(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols) {
 
@@ -647,7 +648,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for setting lengths
-	setLengths << < numBlocks, blockSize >> > (deviceParticles, particles.size(), particleRadiusOfRepel,
+	setLengths << < numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		lengths, interactionMatrixRows, interactionMatrixCols);
 
 	resetGlobalCounter << <1, 1 >> > ();
@@ -656,7 +657,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRe
 	cudaDeviceSynchronize();
 
 	// Launch CUDA kernel for updating particles
-	UpdateParticlesHelper(particles, particleRadiusOfRepel, particleRadius, particleRepulsionForce, obstacles, dt,interactionMatrixRows, interactionMatrixCols);
+	UpdateParticlesHelper(particles, particlesSize, particleRadiusOfRepel, particleRadius, particleRepulsionForce, obstacles, dt, interactionMatrixRows, interactionMatrixCols);
 
 	Particle* output = new Particle[particles.size()];
 

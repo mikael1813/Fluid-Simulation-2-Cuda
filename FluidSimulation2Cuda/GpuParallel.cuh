@@ -18,7 +18,7 @@ void GpuParallelCalculateFutureVelocities(std::vector<Particle>& particles, int 
 void GpuParallelCheckCollision(std::vector<Particle>& particles, int particleRadiusOfRepel,
 	int particleRadius, float repulsionForce, std::vector<Surface2D>& obstacles);
 
-void GpuUpdateParticles(std::vector<Particle>& particles, int particleRadiusOfRepel,
+void GpuUpdateParticles(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols);
 
