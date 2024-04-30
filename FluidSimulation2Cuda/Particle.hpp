@@ -10,8 +10,12 @@ constexpr float GRAVITY = 10.0f;
 
 class Particle {
 public:
-	Particle(){}
-	Particle(float x, float y, int id) : m_Position(Vector2D(x, y)), m_ID(id), m_TemporaryVelocity(Vector2D()) {}
+	Particle(){
+		m_Exists = false;
+	}
+	Particle(float x, float y, int id) : m_Position(Vector2D(x, y)), m_ID(id), m_TemporaryVelocity(Vector2D()) {
+		m_Exists = true;
+	}
 	Vector2D m_PredictedPosition;
 	Vector2D m_LastSafePosition;
 	Vector2D m_FutureVelocity;
@@ -23,6 +27,7 @@ public:
 
 	float m_Density = 0.0f;
 	int m_ID;
+	bool m_Exists;
 
 	void update(float dt) {
 		if (dt == 0) {

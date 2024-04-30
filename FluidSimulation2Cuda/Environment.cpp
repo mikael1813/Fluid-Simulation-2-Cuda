@@ -16,7 +16,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 4096*4;
+constexpr auto particleCount = 9000;
 
 constexpr auto particleRadius = 1;
 constexpr auto particleRadiusOfRepel = 50;
@@ -80,6 +80,12 @@ Environment::Environment() {
 
 	}
 
+	int particleCount = Math::nextPowerOf2(m_Particles.size());
+
+	for (int i = m_Particles.size(); i < particleCount; i++) {
+		m_Particles.push_back(Particle());
+	}
+
 	m_Obstacles.push_back(Surface2D(50, 10, 1200, 11));
 	m_Obstacles.push_back(Surface2D(50, 10, 50, 700));
 	m_Obstacles.push_back(Surface2D(50, 699, 1200, 700));
@@ -111,6 +117,10 @@ Environment::~Environment()
 
 void Environment::renderParticles(int width, int height) {
 	for (auto& particle : m_Particles) {
+
+		if (!particle.m_Exists) {
+			continue;
+		}
 
 		//float density = particle->m_Density;
 

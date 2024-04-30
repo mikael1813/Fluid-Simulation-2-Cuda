@@ -144,3 +144,14 @@ float Math::viscositySmoothingKernel(float radius, float distance) {
 	float x = (radius * radius - distance * distance) / (radius * radius);
 	return x * x * x;
 }
+
+unsigned int Math::nextPowerOf2(unsigned int n) {
+	if (n && !(n & (n - 1)))
+		return n; // Already a power of 2
+
+	unsigned int p = 1;
+	while (p < n) {
+		p <<= 1;
+	}
+	return p;
+}

@@ -40,6 +40,12 @@ __device__ void updateParticle(int index, Particle* particle, double dt) {
 		return;
 	}
 
+	if (!particle[index].m_Exists) {
+		particle[index].m_Position.X = 999999;
+		particle[index].m_Position.Y = 999999;
+		return;
+	}
+
 	float leapFrog = 0.95f;
 
 	particle[index].m_LastSafePosition = particle[index].m_Position;
@@ -86,6 +92,9 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 
 			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
 				Particle otherParticle = particles[otherParticleIndex];
+				if (!otherParticle.m_Exists) {
+					continue;
+				}
 				float distance = sqrt(CudaMath::squared_distance(point, otherParticle.m_PredictedPosition));
 				float influence = CudaMath::smoothingKernel(particleRadiusOfRepel, distance);
 				density += mass * influence;
@@ -137,6 +146,10 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 				Particle otherParticle = particles[otherParticleIndex];
 
 				if (particle.m_ID == otherParticle.m_ID) {
+					continue;
+				}
+
+				if (!otherParticle.m_Exists) {
 					continue;
 				}
 
@@ -248,6 +261,10 @@ __device__ void updateCollisions(int index, Particle* particles, int praticlesSi
 					continue;
 				}
 
+				if (!otherParticle.m_Exists) {
+					continue;
+				}
+
 				if (CudaMath::squared_distance(particle.m_Position, otherParticle.m_Position) <=
 					(particleRadius * particleRadius) * 4) {
 
@@ -346,6 +363,10 @@ __global__ void specialUpdatePredictedPositions(Particle* particles, int praticl
 		return;
 	}
 
+	if (!particles[index].m_Exists) {
+		return;
+	}
+
 	Particle particle = particles[index];
 
 	GpuVector2D newPredictedPosition = GpuVector2D(particles[index].m_Position) +
@@ -365,6 +386,10 @@ __global__ void specialUpdateDensities(Particle* particles, int praticlesSize, i
 		return;
 	}
 
+	if (!particles[index].m_Exists) {
+		return;
+	}
+
 	updateParticleDensities(index, particles, praticlesSize, particleRadiusOfRepel, lengths,
 		interactionMatrixRows, interactionMatrixCols);
 }
@@ -379,6 +404,10 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 		return;
 	}
 
+	if (!particles[index].m_Exists) {
+		return;
+	}
+
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
 		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt);
 }
@@ -390,6 +419,10 @@ __global__ void specialUpdateCollisions(Particle* particles, int praticlesSize, 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (index >= praticlesSize) {
+		return;
+	}
+
+	if (!particles[index].m_Exists) {
 		return;
 	}
 
@@ -495,6 +528,15 @@ __global__ void bitonicSortGPU(Particle* arr, int j, int k, int particleRadiusOf
 		}
 		else {
 			lower = rowA < rowB;
+		}
+
+		if (!arr[ij].m_Exists) {
+			lower = true;
+		}
+		else {
+			if (!arr[i].m_Exists) {
+				lower = false;
+			}
 		}
 
 		if ((i & k) == 0)

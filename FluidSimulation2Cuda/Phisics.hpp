@@ -126,4 +126,7 @@ namespace Math {
 	// Function to calculate the viscosity smoothing kernel
 	float viscositySmoothingKernel(float radius, float distance);
 
+	// Function to calculate the first power of 2 bigger than n
+	unsigned int nextPowerOf2(unsigned int n);
+
 };
