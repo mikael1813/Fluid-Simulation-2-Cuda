@@ -24,6 +24,10 @@ Range* lengths;
 
 Surface2D* deviceObstacles;
 
+ConsumerPipe* deviceConsumerPipes;
+
+size_t consumerPipesSize;
+
 Particle* deviceInteractionMatrixParticles;
 
 int* deviceLengths;
@@ -239,9 +243,49 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 	particles[index].m_PredictedPosition = particles[index].m_Position;
 }
 
-__device__ void updateCollisions(int index, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+__device__ void updateCollisionsBetweenParticlesAndObstacles(int particleIndex, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
-	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize)
+	int interactionMatrixCols, int obstacleIndex, Surface2D* obstacles, int obstaclesSize)
+{
+
+	Particle particle = particles[particleIndex];
+
+	Vector2D point = particle.m_PredictedPosition;
+
+	int row = point.Y / particleRadiusOfRepel;
+	int col = point.X / particleRadiusOfRepel;
+
+	Surface2D obstacle = obstacles[obstacleIndex];
+
+	if (CudaMath::check_line_segment_circle_intersection(obstacle.Point1, obstacle.Point2,
+		particle.m_Position, particleRadius)) {
+
+		//particle->m_Velocity = reflectionVector * 0.1f;
+		particles[particleIndex].m_Velocity.X = 0;
+		particles[particleIndex].m_Velocity.Y = 0;
+
+		/*particle.m_Velocity.Y = -particle.m_Velocity.Y;*/
+
+		particles[particleIndex].m_Position = particle.m_LastSafePosition;
+
+		return;
+	}
+
+	if (CudaMath::doIntersect(obstacle.Point1, obstacle.Point2, particle.m_Position, particle.m_LastSafePosition)) {
+		//particle->m_Velocity = reflectionVector * 0.1f;
+		particles[particleIndex].m_Velocity.X = 0;
+		particles[particleIndex].m_Velocity.Y = 0;
+
+		/*particle.m_Velocity.Y = -particle.m_Velocity.Y;*/
+
+		particles[particleIndex].m_Position = particle.m_LastSafePosition;
+
+	}
+}
+
+__device__ void updateCollisionsBetweenParticlesAndParticles(int index, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
+	int interactionMatrixCols)
 {
 
 
@@ -251,36 +295,6 @@ __device__ void updateCollisions(int index, Particle* particles, int praticlesSi
 
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
-
-	for (int i = 0; i < obstaclesSize; i++) {
-
-		Surface2D obstacle = obstacles[i];
-
-		//if (CudaMath::check_line_segment_circle_intersection(obstacle.Point1, obstacle.Point2,
-		//	particle.m_Position, particleRadius)) {
-
-		//	//particle->m_Velocity = reflectionVector * 0.1f;
-		//	particles[index].m_Velocity.X = 0;
-		//	particles[index].m_Velocity.Y = 0;
-
-		//	/*particle.m_Velocity.Y = -particle.m_Velocity.Y;*/
-
-		//	particles[index].m_Position = particle.m_LastSafePosition;
-
-		//	break;
-		//}
-
-		if (CudaMath::doIntersect(obstacle.Point1, obstacle.Point2, particle.m_Position, particle.m_LastSafePosition)) {
-			//particle->m_Velocity = reflectionVector * 0.1f;
-			particles[index].m_Velocity.X = 0;
-			particles[index].m_Velocity.Y = 0;
-
-			/*particle.m_Velocity.Y = -particle.m_Velocity.Y;*/
-
-			particles[index].m_Position = particle.m_LastSafePosition;
-
-		}
-	}
 
 
 	for (int i = -1; i < 2; i++) {
@@ -386,10 +400,10 @@ __global__ void specialUpdateKernel(Particle* particles, int praticlesSize, int 
 
 	// check collisions
 
-	updateCollisions(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacles, obstaclesSize);
+	/*updateCollisions(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacles, obstaclesSize);*/
 
-	// check collisions
+		// check collisions
 
 
 }
@@ -439,9 +453,29 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt);
 }
 
-__global__ void specialUpdateCollisions(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+__global__ void specialUpdateCollisionsBetweenParticlesAndObstacles(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
 	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt) {
+
+	int particleIndex = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (particleIndex >= praticlesSize) {
+		return;
+	}
+
+	int obstacleIndex = blockIdx.y;
+
+	if (obstacleIndex >= obstaclesSize) {
+		return;
+	}
+
+	updateCollisionsBetweenParticlesAndObstacles(particleIndex, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacleIndex, obstacles, obstaclesSize);
+}
+
+__global__ void specialUpdateCollisionsBetweenParticlesAndParticles(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
+	int interactionMatrixCols, double dt) {
 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -449,8 +483,8 @@ __global__ void specialUpdateCollisions(Particle* particles, int praticlesSize, 
 		return;
 	}
 
-	updateCollisions(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacles, obstaclesSize);
+	updateCollisionsBetweenParticlesAndParticles(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols);
 }
 
 __global__ void resetGlobalCounter() {
@@ -583,17 +617,21 @@ __global__ void bitonicSortGPU(Particle* arr, int j, int k, int particleRadiusOf
 	}
 }
 
-void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize) {
+void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize, std::vector<ConsumerPipe>& consumerPipes) {
 
 	cudaError_t cudaStatus;
+
+	consumerPipesSize = consumerPipes.size();
 
 	// Allocate memory on GPU
 	cudaStatus = cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
 	cudaStatus = cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+	cudaStatus = cudaMalloc(&deviceConsumerPipes, consumerPipes.size() * sizeof(ConsumerPipe));
 
 	// Copy data from CPU to GPU
 	cudaStatus = cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
 	cudaStatus = cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
+	cudaStatus = cudaMemcpy(deviceConsumerPipes, consumerPipes.data(), consumerPipes.size() * sizeof(ConsumerPipe), cudaMemcpyHostToDevice);
 
 
 	// Allocate memory on GPU
@@ -609,6 +647,7 @@ void GpuFree() {
 	// Free GPU memory
 	cudaFree(deviceParticles);
 	cudaFree(deviceObstacles);
+	cudaFree(deviceConsumerPipes);
 	cudaFree(lengths);
 }
 
@@ -635,16 +674,68 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, 
 
 	cudaDeviceSynchronize();
 
-	specialUpdateCollisions << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
+	dim3 gridDim(numBlocks, obstacles.size()); // 4x4 blocks
+
+	specialUpdateCollisionsBetweenParticlesAndObstacles << <gridDim, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
+
+	specialUpdateCollisionsBetweenParticlesAndParticles << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
+		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, dt);
 
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
 }
 
+__global__ void specialUpdatePipes(Particle* particles, int particlesSize, int particleRadius, ConsumerPipe* consumerPipes, size_t consumerPipesSize) {
+	int particleIndex = blockIdx.x * blockDim.x + threadIdx.x;
 
-void GpuUpdateParticles(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
+	if (particleIndex >= particlesSize) {
+		return;
+	}
+
+	int pipeIndex = blockIdx.y;
+
+	if (pipeIndex >= consumerPipesSize) {
+		return;
+	}
+
+	Particle particle = particles[particleIndex];
+
+	ConsumerPipe pipe = consumerPipes[pipeIndex];
+
+	GpuVector2D direction = GpuVector2D(particle.m_Position) - GpuVector2D(pipe.m_Position);
+
+	if (direction.getMagnitude() == 0) {
+		direction = GpuVector2D::getRandomDirection();
+	}
+
+	float distance = direction.getMagnitude();
+	if (distance <= pipe.m_InteractionRadius + particleRadius) {
+		particles[particleIndex].m_Exists = false;
+	}
+
+	/*if (particlesToRemove.size() >= m_ParticlesPerCycle) {
+		break;
+	}*/
+
+}
+
+void UpdatePipes(int particlesSize, int particleRadius) {
+
+	int blockSize = (particlesSize < maxThreadsPerBlock) ? particlesSize : maxThreadsPerBlock;
+	int numBlocks = (particlesSize + blockSize - 1) / blockSize;
+
+	dim3 gridDim(numBlocks, consumerPipesSize); // 4x4 blocks
+
+	specialUpdatePipes << <gridDim, blockSize >> > (deviceParticles, particlesSize,
+		particleRadius, deviceConsumerPipes, consumerPipesSize);
+
+	// Wait for kernel to finish
+	cudaDeviceSynchronize();
+}
+
+void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	double dt, size_t interactionMatrixRows, size_t interactionMatrixCols) {
 
@@ -681,12 +772,21 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int particlesSize, int
 	// Launch CUDA kernel for updating particles
 	UpdateParticlesHelper(particles, particlesSize, particleRadiusOfRepel, particleRadius, particleRepulsionForce, obstacles, dt, interactionMatrixRows, interactionMatrixCols);
 
+
+	// Update pipes
+	UpdatePipes(particlesSize, particleRadius);
+
 	Particle* output = new Particle[particles.size()];
 
 	cudaMemcpy(output, deviceParticles, particles.size() * sizeof(Particle), cudaMemcpyDeviceToHost);
 
+	particlesSize = 0;
+
 	for (int i = 0; i < particles.size(); i++) {
 		particles[i] = output[i];
+		if (particles[i].m_Exists) {
+			particlesSize++;
+		}
 	}
 
 	// Free output

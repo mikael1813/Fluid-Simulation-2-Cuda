@@ -16,7 +16,7 @@ public:
 		return m_InteractionRadius;
 	}
 
-protected:
+public:
 	Vector2D m_Position;
 	float m_InteractionRadius;
 	float m_Pressure;

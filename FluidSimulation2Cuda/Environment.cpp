@@ -16,7 +16,7 @@
 #include <map>
 
 
-constexpr auto particleCount = 10000;
+//constexpr auto particleCount = 10000;
 
 constexpr auto particleRadius = 1;
 constexpr auto particleRadiusOfRepel = 50;
@@ -55,7 +55,7 @@ Environment::Environment() {
 
 	int count = 0;
 
-	for (int i = 0; i < particleCount; i++) {
+	for (int i = 0; i < m_ParticleCount; i++) {
 
 		bool ok;
 		float posX;
@@ -91,8 +91,8 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(50, 699, 1200, 700));
 	m_Obstacles.push_back(Surface2D(1200, 10, 1200, 700));
 
-	/*m_Pipes.push_back(new GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
-	m_Pipes.push_back(new ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 10));*/
+	//m_Pipes.push_back(new GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
+	m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
 
 	//m_Obstacles.push_back(Surface2D(3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 - 50, 3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 + 50));
 
@@ -100,7 +100,7 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
-	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols);
+	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes);
 }
 
 #include<windows.h>
@@ -108,9 +108,9 @@ Environment::Environment() {
 Environment::~Environment()
 {
 
-	for (auto& pipe : m_Pipes) {
+	/*for (auto& pipe : m_Pipes) {
 		delete pipe;
-	}
+	}*/
 
 	GpuFree();
 }
@@ -153,9 +153,9 @@ void Environment::render(int width, int height)
 		}
 	}*/
 
-	for (auto& pipe : m_Pipes) {
+	for (auto pipe : m_ConsumerPipes) {
 		glColor4f(1.0, 1.0, 1.0, 0.5);
-		Graphics::DrawCircle(width, height, pipe->getPosition().X, pipe->getPosition().Y, pipe->getInteractionRadius() * 2, 20);
+		Graphics::DrawCircle(width, height, pipe.getPosition().X, pipe.getPosition().Y, pipe.getInteractionRadius() * 2, 20);
 	}
 
 	this->renderParticles(width, height);
@@ -199,7 +199,7 @@ void Environment::newUpdate(float dt) {
 
 	time1 = std::chrono::steady_clock::now();
 
-	GpuUpdateParticles(m_Particles, particleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
+	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
 		interactionMatrixRows, interactionMatrixCols);
 
 	/*for (auto& pipe : m_Pipes) {

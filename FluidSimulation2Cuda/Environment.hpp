@@ -21,11 +21,15 @@ public:
 	void newUpdate(float dt);
 
 private:
+
+	int m_ParticleCount = 10000;
+
 	std::vector<Particle> m_Particles;
 	std::vector<float> m_ParticleProperties;
 	std::vector<float> m_ParticleDensities;
 
-	std::vector<Pipe*> m_Pipes;
+	std::vector<ConsumerPipe> m_ConsumerPipes;
+	std::vector<GeneratorPipe> m_GeneratorPipes;
 
 	std::vector<std::thread> m_Threads;
 
