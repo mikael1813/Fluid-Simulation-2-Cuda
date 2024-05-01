@@ -10,6 +10,8 @@ constexpr float HOW_FAR_INTO_THE_FUTURE = 2.5f;
 
 constexpr int maxThreadsPerBlock = 512;
 
+constexpr float viscosityStrength = 0.1f;
+
 struct Range {
 	int start;
 	int end;
@@ -40,8 +42,8 @@ __device__ void updateParticle(int index, Particle* particle, double dt) {
 		return;
 	}
 
-	float leapFrog = 0.95f;
-	//float leapFrog = 0.98f;
+	float leapFrog = 1.0f;
+	//float leapFrog = 0.99f;
 
 	particle[index].m_LastSafePosition = particle[index].m_Position;
 
@@ -144,10 +146,6 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 					continue;
 				}
 
-				if (!otherParticle.m_Exists) {
-					continue;
-				}
-
 				float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
 
 				GpuVector2D dir = distance < particleRadius ? GpuVector2D::getRandomDirection() : (GpuVector2D(otherParticle.m_PredictedPosition) - GpuVector2D(particle.m_PredictedPosition)) / distance;
@@ -170,6 +168,40 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 	return pressureForce;
 }
 
+
+__device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+	int particleRadius, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
+
+	Particle particle = particles[index];
+
+	GpuVector2D viscosityForce = GpuVector2D();
+	Vector2D point = particle.m_PredictedPosition;
+
+	int row = point.Y / particleRadiusOfRepel;
+	int col = point.X / particleRadiusOfRepel;
+
+
+	for (int i = -1; i < 2; i++) {
+		for (int j = -1; j < 2; j++) {
+			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
+				continue;
+			}
+
+			int lengthIndex = (row + i) * interactionMatrixCols + col + j;
+
+			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
+				Particle otherParticle = particles[otherParticleIndex];
+				float distance = sqrt(CudaMath::squared_distance(point, otherParticle.m_PredictedPosition));
+				float influence = CudaMath::viscositySmoothingKernel(particleRadiusOfRepel, distance);
+
+				viscosityForce += (GpuVector2D(otherParticle.m_Velocity) - GpuVector2D(particle.m_Velocity)) * influence;
+			}
+		}
+	}
+
+	return viscosityForce * viscosityStrength;
+}
+
 __device__ void updateParticleFutureVelocities(int index, Particle* particles, int praticlesSize,
 	int particleRadiusOfRepel, int particleRadius, Range* lengths, size_t interactionMatrixRows,
 	size_t interactionMatrixCols, double dt)
@@ -190,8 +222,9 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 	}*/
 	GpuVector2D pressureAcceleration = pressureForce / particle.m_Density;
 
-	//Vector2D viscosityForce = calculateViscosityForce(particle);
-	GpuVector2D viscosityForce = GpuVector2D();
+	GpuVector2D viscosityForce = calculateViscosityForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+		lengths, interactionMatrixRows, interactionMatrixCols);
+	//GpuVector2D viscosityForce = GpuVector2D();
 
 	GpuVector2D futureVelocity = GpuVector2D(particle.m_Velocity) + pressureAcceleration * dt + viscosityForce * dt;
 
@@ -223,9 +256,21 @@ __device__ void updateCollisions(int index, Particle* particles, int praticlesSi
 
 		Surface2D obstacle = obstacles[i];
 
-		if (CudaMath::check_line_segment_circle_intersection(obstacle.Point1, obstacle.Point2,
-			particle.m_Position, particleRadius)) {
+		//if (CudaMath::check_line_segment_circle_intersection(obstacle.Point1, obstacle.Point2,
+		//	particle.m_Position, particleRadius)) {
 
+		//	//particle->m_Velocity = reflectionVector * 0.1f;
+		//	particles[index].m_Velocity.X = 0;
+		//	particles[index].m_Velocity.Y = 0;
+
+		//	/*particle.m_Velocity.Y = -particle.m_Velocity.Y;*/
+
+		//	particles[index].m_Position = particle.m_LastSafePosition;
+
+		//	break;
+		//}
+
+		if (CudaMath::doIntersect(obstacle.Point1, obstacle.Point2, particle.m_Position, particle.m_LastSafePosition)) {
 			//particle->m_Velocity = reflectionVector * 0.1f;
 			particles[index].m_Velocity.X = 0;
 			particles[index].m_Velocity.Y = 0;
@@ -234,7 +279,6 @@ __device__ void updateCollisions(int index, Particle* particles, int praticlesSi
 
 			particles[index].m_Position = particle.m_LastSafePosition;
 
-			break;
 		}
 	}
 

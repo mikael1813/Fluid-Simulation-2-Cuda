@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 
-constexpr float GRAVITY = 30.0f;
+constexpr float GRAVITY = 10.0f;
 
 
 class Particle {
@@ -14,6 +14,7 @@ public:
 		m_Exists = false;
 	}
 	Particle(float x, float y, int id) : m_Position(Vector2D(x, y)), m_ID(id), m_TemporaryVelocity(Vector2D()) {
+		m_LastSafePosition = m_Position;
 		m_Exists = true;
 	}
 	Vector2D m_PredictedPosition;

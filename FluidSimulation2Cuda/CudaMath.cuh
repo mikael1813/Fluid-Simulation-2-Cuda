@@ -160,6 +160,14 @@ namespace CudaMath {
 		return 2 * x;
 	}
 
+	__device__ float viscositySmoothingKernel(float radius, float distance) {
+		if (distance >= radius) {
+			return 0.0f;
+		}
+		float x = (radius * radius - distance * distance) / (radius * radius);
+		return x * x * x;
+	}
+
 	__device__ float convertDensityToPressure(float density) {
 		const float targetDensity = 3.0f;
 		//const float pressureConstant = 10.0f;
@@ -174,6 +182,49 @@ namespace CudaMath {
 		float pressure1 = convertDensityToPressure(density1);
 		float pressure2 = convertDensityToPressure(density2);
 		return (pressure1 + pressure2) / 2;
+	}
+
+	__device__ float min(float a, float b) {
+		return a < b ? a : b;
+	}
+
+	__device__ float max(float a, float b) {
+		return a > b ? a : b;
+	}
+
+	// Function to find orientation of triplet (p, q, r)
+	__device__ int orientation(Vector2D p, Vector2D q, Vector2D r) {
+		int val = (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y);
+		if (val == 0) return 0; // colinear
+		return (val > 0) ? 1 : 2; // clock or counterclock wise
+	}
+
+	// Function to check if the segment 'p1q1' and 'p2q2' intersect
+	__device__ bool doIntersect(Vector2D p1, Vector2D q1, Vector2D p2, Vector2D q2) {
+		// Find the four orientations needed for general and special cases
+		int o1 = orientation(p1, q1, p2);
+		int o2 = orientation(p1, q1, q2);
+		int o3 = orientation(p2, q2, p1);
+		int o4 = orientation(p2, q2, q1);
+
+		// General case
+		if (o1 != o2 && o3 != o4)
+			return true;
+
+		// Special cases
+		if (o1 == 0 && (p2.X >= min(p1.X, q1.X) && p2.X <= max(p1.X, q1.X)) && (p2.Y >= min(p1.Y, q1.Y) && p2.Y <= max(p1.Y, q1.Y)))
+			return true;
+
+		if (o2 == 0 && (q2.X >= min(p1.X, q1.X) && q2.X <= max(p1.X, q1.X)) && (q2.Y >= min(p1.Y, q1.Y) && q2.Y <= max(p1.Y, q1.Y)))
+			return true;
+
+		if (o3 == 0 && (p1.X >= min(p2.X, q2.X) && p1.X <= max(p2.X, q2.X)) && (p1.Y >= min(p2.Y, q2.Y) && p1.Y <= max(p2.Y, q2.Y)))
+			return true;
+
+		if (o4 == 0 && (q1.X >= min(p2.X, q2.X) && q1.X <= max(p2.X, q2.X)) && (q1.Y >= min(p2.Y, q2.Y) && q1.Y <= max(p2.Y, q2.Y)))
+			return true;
+
+		return false; // Doesn't fall in any of the above cases
 	}
 
 
