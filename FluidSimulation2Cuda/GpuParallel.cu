@@ -5,6 +5,7 @@
 #include "Phisics.hpp"
 
 #include <cuda_runtime.h>
+#include <random>
 
 constexpr float HOW_FAR_INTO_THE_FUTURE = 2.5f;
 
@@ -25,8 +26,12 @@ Range* lengths;
 Surface2D* deviceObstacles;
 
 ConsumerPipe* deviceConsumerPipes;
+GeneratorPipe* deviceGeneratorPipes;
+
+int maxParticles = 0;
 
 size_t consumerPipesSize;
+size_t generatorPipesSize;
 
 Particle* deviceInteractionMatrixParticles;
 
@@ -333,6 +338,8 @@ __device__ void updateCollisionsBetweenParticlesAndParticles(int index, Particle
 					particles[index].m_TemporaryVelocity.X = temporaryVelocity.X;
 					particles[index].m_TemporaryVelocity.Y = temporaryVelocity.Y;
 
+					//particles[index].m_Position = particles[index].m_LastSafePosition;
+
 					//otherParticle->m_TemporaryVelocity = normalVector * particleRepulsionForce;
 				}
 			}
@@ -617,21 +624,30 @@ __global__ void bitonicSortGPU(Particle* arr, int j, int k, int particleRadiusOf
 	}
 }
 
-void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize, std::vector<ConsumerPipe>& consumerPipes) {
+void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize, std::vector<ConsumerPipe>& consumerPipes,
+	std::vector<GeneratorPipe>& generatorPipes) {
 
 	cudaError_t cudaStatus;
 
+	// Get max particles of all generator pipes
+	for (int i = 0; i < generatorPipes.size(); i++) {
+		maxParticles = maxParticles < generatorPipes[i].m_ParticlesPerCycle ? generatorPipes[i].m_ParticlesPerCycle : maxParticles;
+	}
+
 	consumerPipesSize = consumerPipes.size();
+	generatorPipesSize = generatorPipes.size();
 
 	// Allocate memory on GPU
 	cudaStatus = cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
 	cudaStatus = cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
 	cudaStatus = cudaMalloc(&deviceConsumerPipes, consumerPipes.size() * sizeof(ConsumerPipe));
+	cudaStatus = cudaMalloc(&deviceGeneratorPipes, generatorPipes.size() * sizeof(GeneratorPipe));
 
 	// Copy data from CPU to GPU
 	cudaStatus = cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
 	cudaStatus = cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
 	cudaStatus = cudaMemcpy(deviceConsumerPipes, consumerPipes.data(), consumerPipes.size() * sizeof(ConsumerPipe), cudaMemcpyHostToDevice);
+	cudaStatus = cudaMemcpy(deviceGeneratorPipes, generatorPipes.data(), generatorPipes.size() * sizeof(GeneratorPipe), cudaMemcpyHostToDevice);
 
 
 	// Allocate memory on GPU
@@ -648,6 +664,7 @@ void GpuFree() {
 	cudaFree(deviceParticles);
 	cudaFree(deviceObstacles);
 	cudaFree(deviceConsumerPipes);
+	cudaFree(deviceGeneratorPipes);
 	cudaFree(lengths);
 }
 
@@ -687,7 +704,7 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, 
 	cudaDeviceSynchronize();
 }
 
-__global__ void specialUpdatePipes(Particle* particles, int particlesSize, int particleRadius, ConsumerPipe* consumerPipes, size_t consumerPipesSize) {
+__global__ void specialUpdateConsumerPipes(Particle* particles, int particlesSize, int particleRadius, ConsumerPipe* consumerPipes, size_t consumerPipesSize) {
 	int particleIndex = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (particleIndex >= particlesSize) {
@@ -721,6 +738,41 @@ __global__ void specialUpdatePipes(Particle* particles, int particlesSize, int p
 
 }
 
+__global__ void specialUpdateGeneratorPipes(Particle* particles, int particlesSize, int particleRadius, GeneratorPipe* generatorPipes,
+	size_t generatorPipesSize, int seed) {
+	int index = threadIdx.x;
+
+	int pipeIndex = blockIdx.x;
+
+	if (index >= generatorPipes[pipeIndex].m_ParticlesPerCycle) {
+		return;
+	}
+
+	if (pipeIndex >= generatorPipesSize) {
+		return;
+	}
+
+	int particleIndex = particlesSize - (pipeIndex * blockDim.x + index + 1);
+
+	curandStatePhilox4_32_10_t state;
+	curand_init(seed, particleIndex, 0, &state);
+
+	// Generate a random number between -1 and 1
+	float random = curand_uniform(&state) * 2 - 1;
+	float random2 = curand_uniform(&state);
+
+	int posX = generatorPipes[pipeIndex].m_Position.X + random * generatorPipes[pipeIndex].m_InteractionRadius;
+	int posY = generatorPipes[pipeIndex].m_Position.Y + random2 * generatorPipes[pipeIndex].m_InteractionRadius;
+
+	particles[particleIndex].m_Position.X = posX;
+	particles[particleIndex].m_Position.Y = posY;
+
+	particles[particleIndex].m_Exists = true;
+
+	//printf("particleIndex: %d, posX: %d, posY: %d \n", particleIndex, posX, posY);
+
+}
+
 void UpdatePipes(int particlesSize, int particleRadius) {
 
 	int blockSize = (particlesSize < maxThreadsPerBlock) ? particlesSize : maxThreadsPerBlock;
@@ -728,11 +780,30 @@ void UpdatePipes(int particlesSize, int particleRadius) {
 
 	dim3 gridDim(numBlocks, consumerPipesSize); // 4x4 blocks
 
-	specialUpdatePipes << <gridDim, blockSize >> > (deviceParticles, particlesSize,
+	specialUpdateConsumerPipes << <gridDim, blockSize >> > (deviceParticles, particlesSize,
 		particleRadius, deviceConsumerPipes, consumerPipesSize);
+
+	numBlocks = generatorPipesSize;
+	blockSize = maxParticles;
+
+	//gridDim = dim3(numBlocks, generatorPipesSize); // 4x4 blocks
+
+	int particleArraySize = Math::nextPowerOf2(particlesSize);
+
+	// Generate random seed
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dis(-1.0, 1.0);
+
+	int seed = dis(gen) * 1000;
+
+	specialUpdateGeneratorPipes << <numBlocks, blockSize >> > (deviceParticles, particleArraySize,
+		particleRadius, deviceGeneratorPipes, generatorPipesSize, seed);
 
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
+
+
 }
 
 void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, int particleRadiusOfRepel,

@@ -27,7 +27,8 @@ void GpuAllocateInteractionMatrix(InteractionMatrixClass* interactionMatrix);
 
 void GpuFreeInteractionMatrix();
 
-void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize, std::vector<ConsumerPipe>& consumerPipes);
+void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obstacles, int interactionMatrixSize,
+	std::vector<ConsumerPipe>& consumerPipes, std::vector<GeneratorPipe>& generatorPipes);
 
 void GpuFree();
 

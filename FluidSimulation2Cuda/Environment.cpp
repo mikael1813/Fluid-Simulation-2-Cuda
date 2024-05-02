@@ -22,7 +22,7 @@ constexpr auto particleRadius = 1;
 constexpr auto particleRadiusOfRepel = 50;
 constexpr auto particleDistance = 30;
 
-constexpr auto particleRepulsionForce = 1.0f;
+constexpr auto particleRepulsionForce = 3.0f;
 
 constexpr int SCREEN_WIDTH = 1280;
 constexpr int SCREEN_HEIGHT = 720;
@@ -91,7 +91,7 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(50, 699, 1200, 700));
 	m_Obstacles.push_back(Surface2D(1200, 10, 1200, 700));
 
-	//m_Pipes.push_back(new GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
+	m_GeneratorPipes.push_back(GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
 	m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
 
 	//m_Obstacles.push_back(Surface2D(3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 - 50, 3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 + 50));
@@ -100,7 +100,7 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
-	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes);
+	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes, m_GeneratorPipes);
 }
 
 #include<windows.h>
@@ -154,6 +154,11 @@ void Environment::render(int width, int height)
 	}*/
 
 	for (auto pipe : m_ConsumerPipes) {
+		glColor4f(1.0, 1.0, 1.0, 0.5);
+		Graphics::DrawCircle(width, height, pipe.getPosition().X, pipe.getPosition().Y, pipe.getInteractionRadius() * 2, 20);
+	}
+
+	for (auto pipe : m_GeneratorPipes) {
 		glColor4f(1.0, 1.0, 1.0, 0.5);
 		Graphics::DrawCircle(width, height, pipe.getPosition().X, pipe.getPosition().Y, pipe.getInteractionRadius() * 2, 20);
 	}
