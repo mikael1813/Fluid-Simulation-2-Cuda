@@ -22,7 +22,8 @@ public:
 
 private:
 
-	int m_ParticleCount = 10000;
+	int m_ParticleCount = 3000;
+	//int m_ParticleCount = 20000;
 	//int m_ParticleCount = 10000;
 
 	std::vector<Particle> m_Particles;

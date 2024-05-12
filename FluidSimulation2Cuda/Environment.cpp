@@ -18,7 +18,7 @@
 
 //constexpr auto particleCount = 10000;
 
-constexpr auto particleRadius = 1;
+constexpr auto particleRadius = 2;
 constexpr auto particleRadiusOfRepel = 50;
 constexpr auto particleDistance = 30;
 
@@ -54,6 +54,7 @@ Environment::Environment() {
 	std::mt19937 gen(rd());
 
 	int count = 0;
+
 
 	for (int i = 0; i < m_ParticleCount; i++) {
 
@@ -91,8 +92,8 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(50, 699, 1200, 700));
 	m_Obstacles.push_back(Surface2D(1200, 10, 1200, 700));
 
-	m_GeneratorPipes.push_back(GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
-	m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
+	//m_GeneratorPipes.push_back(GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
+	//m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
 
 	//m_Obstacles.push_back(Surface2D(3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 - 50, 3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 + 50));
 
@@ -125,6 +126,7 @@ void Environment::renderParticles(int width, int height) {
 		//float density = particle->m_Density;
 
 		Vector2D vc = particle.getVelocity();
+		vc = vc / 2;
 
 		//float color = density / maxDensity;
 
@@ -135,8 +137,8 @@ void Environment::renderParticles(int width, int height) {
 		glColor4f(red, green, blue, 1.0f);
 		Graphics::DrawCircle(width, height, particle.getPosition().X, particle.getPosition().Y, particleRadius * 2, 20);
 
-		/*glColor4f(1.0, 1.0, 1.0, 0.4f);
-		DrawLine(width, height, particle.m_Position, particle.m_Position + vc);*/
+		glColor4f(1.0, 1.0, 1.0, 0.4f);
+		Graphics::DrawLine(width, height, particle.m_Position, particle.m_Position + vc);
 	}
 }
 

@@ -169,7 +169,7 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 
 				float sharedPressure = CudaMath::calculateSharedPressure(density, otherParticle.m_Density);
 
-				pressureForce += -sharedPressure * dir * slope * mass / density;
+				pressureForce += -sharedPressure * dir * slope * mass /*/ density*/;
 			}
 		}
 	}
