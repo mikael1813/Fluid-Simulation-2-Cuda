@@ -1,5 +1,7 @@
 #include "Phisics.hpp"
 
+constexpr float targetDensity = 0.8f;
+
 struct GpuVector2D {
 
 
@@ -169,7 +171,7 @@ namespace CudaMath {
 	}
 
 	__device__ float convertDensityToPressure(float density) {
-		const float targetDensity = 0.8f;
+		//targetDensity = 0.8f;
 		//const float pressureConstant = 10.0f;
 		const float pressureConstant = 30.0f;
 

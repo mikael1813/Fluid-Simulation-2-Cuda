@@ -201,6 +201,7 @@ __device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, i
 			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
 				Particle otherParticle = particles[otherParticleIndex];
 				float distance = sqrt(CudaMath::squared_distance(point, otherParticle.m_PredictedPosition));
+
 				float influence = CudaMath::viscositySmoothingKernel(particleRadiusOfRepel, distance);
 
 				viscosityForce += (GpuVector2D(otherParticle.m_Velocity) - GpuVector2D(particle.m_Velocity)) * influence;
@@ -209,6 +210,46 @@ __device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, i
 	}
 
 	return viscosityForce * viscosityStrength;
+}
+
+__device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+	int particleRadius, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
+
+	Particle particle = particles[index];
+
+	GpuVector2D surfaceTension = GpuVector2D();
+	Vector2D point = particle.m_PredictedPosition;
+
+	int row = point.Y / particleRadiusOfRepel;
+	int col = point.X / particleRadiusOfRepel;
+
+	float perfectDensity = targetDensity;
+
+	for (int i = -1; i < 2; i++) {
+		for (int j = -1; j < 2; j++) {
+			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
+				continue;
+			}
+
+			int lengthIndex = (row + i) * interactionMatrixCols + col + j;
+
+			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
+				Particle otherParticle = particles[otherParticleIndex];
+				
+				if (abs(otherParticle.m_Density - targetDensity) < perfectDensity) {
+					perfectDensity = abs(otherParticle.m_Density - targetDensity);
+
+					float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
+
+					GpuVector2D dir = distance < particleRadius ? GpuVector2D::getRandomDirection() : (GpuVector2D(otherParticle.m_PredictedPosition) - GpuVector2D(particle.m_PredictedPosition)) / distance;
+
+					surfaceTension = dir*20;
+				}
+			}
+		}
+	}
+
+	return surfaceTension;
 }
 
 __device__ void updateParticleFutureVelocities(int index, Particle* particles, int praticlesSize,
@@ -225,6 +266,14 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 	GpuVector2D pressureForce = calculatePressureForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
 		lengths, interactionMatrixRows, interactionMatrixCols);
 
+	GpuVector2D surfaceTension = GpuVector2D();
+
+	if (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5) {
+		surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+			lengths, interactionMatrixRows, interactionMatrixCols);
+		//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
+	}
+
 	//pressureForce = GpuVector2D(300, 300);
 	/*if (isnan(pressureForce.X) || isnan(pressureForce.Y)) {
 		printf("pressureForceX: %f , pressureForceY: %f, index: %d\n", pressureForce.X, pressureForce.Y, index);
@@ -235,7 +284,7 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 		lengths, interactionMatrixRows, interactionMatrixCols);
 	//GpuVector2D viscosityForce = GpuVector2D();
 
-	GpuVector2D futureVelocity = GpuVector2D(particle.m_Velocity) + pressureAcceleration * dt + viscosityForce * dt;
+	GpuVector2D futureVelocity = GpuVector2D(particle.m_Velocity) + surfaceTension * dt + pressureAcceleration * dt + viscosityForce * dt;
 
 	//printf("index: %d, futureVelocity: %f %f \n", index, futureVelocity.X, futureVelocity.Y);
 
