@@ -84,6 +84,11 @@ struct Vector2D {
 
 struct Surface2D {
 
+	Surface2D() {
+		Point1 = Vector2D();
+		Point2 = Vector2D();
+	}
+
 	Surface2D(Vector2D point1, Vector2D point2) {
 		Point1 = point1;
 		Point2 = point2;

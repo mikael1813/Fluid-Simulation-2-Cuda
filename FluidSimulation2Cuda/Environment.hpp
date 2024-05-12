@@ -2,6 +2,7 @@
 
 #include "Particle.hpp"
 #include "Pipe.hpp"
+#include "SolidObject.hpp"
 
 //#include "SDL.h"
 
@@ -32,6 +33,8 @@ private:
 
 	std::vector<ConsumerPipe> m_ConsumerPipes;
 	std::vector<GeneratorPipe> m_GeneratorPipes;
+
+	std::vector<SolidRectangle> m_SolidObjects;
 
 	std::vector<std::thread> m_Threads;
 

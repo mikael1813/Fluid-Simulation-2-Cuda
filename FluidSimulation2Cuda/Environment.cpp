@@ -2,6 +2,7 @@
 #include "Graphics.hpp"
 #include "GpuParallel.cuh"
 
+
 #include <algorithm>
 
 #include <GLFW/glfw3.h>
@@ -92,13 +93,15 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(1200, 10, 1200, 700));
 
 	//m_GeneratorPipes.push_back(GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
-	m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
+	//m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
 
 	//m_Obstacles.push_back(Surface2D(3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 - 50, 3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 + 50));
 
 	/*m_Obstacles.push_back(Surface2D(500, 400, 600, 300));
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
+
+	m_SolidObjects.push_back(SolidRectangle(10, 10, 0.5, Vector2D(640, 100)));
 
 	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes, m_GeneratorPipes);
 }
@@ -171,6 +174,12 @@ void Environment::render(int width, int height)
 		Graphics::DrawLine(width, height, obstacle.Point1, obstacle.Point2);
 	}
 
+	// render solid objects
+	for (auto& solidObject : m_SolidObjects) {
+		glColor3f(1.0, 1.0, 1.0);
+		Graphics::DrawRectangle(width, height, solidObject);
+	}
+
 	std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
 	double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
@@ -211,6 +220,11 @@ void Environment::newUpdate(float dt) {
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
 	}*/
+
+	// update solid objects
+	for (auto& solidObject : m_SolidObjects) {
+		solidObject.update(dt);
+	}
 
 	time2 = std::chrono::steady_clock::now();
 	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
