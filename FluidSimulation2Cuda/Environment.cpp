@@ -103,7 +103,7 @@ Environment::Environment() {
 
 	m_SolidObjects.push_back(SolidRectangle(10, 10, 0.5, Vector2D(640, 100)));
 
-	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes, m_GeneratorPipes);
+	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes, m_GeneratorPipes, m_SolidObjects);
 }
 
 #include<windows.h>
@@ -214,17 +214,17 @@ void Environment::newUpdate(float dt) {
 
 	time1 = std::chrono::steady_clock::now();
 
-	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce, m_Obstacles, dt,
-		interactionMatrixRows, interactionMatrixCols);
+	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
+		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols);
 
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
 	}*/
 
 	// update solid objects
-	for (auto& solidObject : m_SolidObjects) {
+	/*for (auto& solidObject : m_SolidObjects) {
 		solidObject.update(dt);
-	}
+	}*/
 
 	time2 = std::chrono::steady_clock::now();
 	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();

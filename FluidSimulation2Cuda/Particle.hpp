@@ -29,6 +29,7 @@ public:
 	float m_Density = 0.0f;
 	int m_ID;
 	bool m_Exists;
+	float m_Mass = 1.0f;
 
 	void update(float dt) {
 		if (dt == 0) {
@@ -77,7 +78,7 @@ public:
 	}
 
 	void addForce(Vector2D force) {
-		m_TemporaryVelocity += force / mass;
+		m_TemporaryVelocity += force / m_Mass;
 	}
 
 private:
@@ -87,5 +88,4 @@ private:
 	//std::vector<Vector2D> m_Forces;
 
 	float visible_radius = 2.0f;
-	float mass = 1.0f;
 };
