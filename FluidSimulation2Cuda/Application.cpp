@@ -1,7 +1,33 @@
 #include "Application.hpp"
 #include "Timer.hpp"
 
+Environment* globalEnvironment;
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	// Check for specific key presses and actions
+	if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+		// Call your method for W key press (e.g., move object up)
+		//yourObject.moveUp();
+		//printf("W key pressed\n");
+		globalEnvironment->moveUp();
+	}
+	else if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+		// Call your method for S key press (e.g., move object down)
+		//printf("S key pressed\n");
+		globalEnvironment->moveDown();
+	}
+	else if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+		// Call your method for A key press (e.g., move object left)
+		//printf("A key pressed\n");
+		globalEnvironment->moveLeft();
+	}
+	else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+		// Call your method for D key press (e.g., move object right)
+		//printf("D key pressed\n");
+		globalEnvironment->moveRight();
+	}
+	// ... (similar checks for other keys as needed)
+}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
@@ -31,8 +57,12 @@ Application::Application()
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
+	
+	// Set the key callback function
+	glfwSetKeyCallback(m_window, keyCallback);
 
 	m_environment = new Environment();
+	globalEnvironment = m_environment;
 }
 
 Application::~Application()

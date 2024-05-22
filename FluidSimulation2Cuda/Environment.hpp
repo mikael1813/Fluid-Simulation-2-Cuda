@@ -21,6 +21,11 @@ public:
 	void update(float dt);
 	void newUpdate(float dt);
 
+	void moveUp();
+	void moveDown();
+	void moveLeft();
+	void moveRight();
+
 private:
 
 	int m_ParticleCount = 3000;
@@ -37,6 +42,8 @@ private:
 	std::vector<SolidRectangle> m_SolidObjects;
 
 	std::vector<std::thread> m_Threads;
+
+	std::vector<Vector2D> m_ExternalForces;
 
 	float calculateDensity(Vector2D point);
 	float calculateProperty(Vector2D point);

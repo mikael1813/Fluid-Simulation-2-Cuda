@@ -182,6 +182,10 @@ namespace CudaMath {
 		return pressure;
 	}
 
+	__device__ float convertDensitiesToArhimedeInfluence(float objectDensity, float particlesSurroundingDensity) {
+		return - particlesSurroundingDensity / objectDensity;
+	}
+
 	__device__ float calculateSharedPressure(float density1, float density2) {
 		float pressure1 = convertDensityToPressure(density1);
 		float pressure2 = convertDensityToPressure(density2);
@@ -231,5 +235,84 @@ namespace CudaMath {
 		return false; // Doesn't fall in any of the above cases
 	}
 
+	__device__ GpuVector2D getCollisionPoint(Particle particle, SolidRectangle rectangle) {
+		float halfWidth = (rectangle.rightSide.Point1.X - rectangle.leftSide.Point1.X) / 2.0f;
+		float halfHeight = (rectangle.topSide.Point1.Y - rectangle.bottomSide.Point1.Y) / 2.0f;
+
+		Vector2D rectangleCenter = rectangle.m_Position;
+		Vector2D prevRectangleCenter = rectangle.m_PreviousPositon;
+
+		// Check for collision along each edge with line intersection approach
+		if (particle.m_Position.X < particle.m_LastSafePosition.X &&
+			particle.m_Position.X >= rectangleCenter.X - halfWidth) {
+			// Point moved left into the rectangle - collision with right edge
+			float t = (rectangleCenter.X - halfWidth - prevRectangleCenter.X) /
+				(particle.m_LastSafePosition.X - particle.m_Position.X);
+			return { rectangleCenter.X - halfWidth,
+					particle.m_LastSafePosition.Y + t * (particle.m_Position.Y - particle.m_LastSafePosition.Y) };
+		}
+		else if (particle.m_Position.X > particle.m_LastSafePosition.X &&
+			particle.m_Position.X <= rectangleCenter.X + halfWidth) {
+			// Point moved right into the rectangle - collision with left edge
+			float t = (rectangleCenter.X + halfWidth - prevRectangleCenter.X) /
+				(particle.m_LastSafePosition.X - particle.m_Position.X);
+			return { rectangleCenter.X + halfWidth,
+					particle.m_LastSafePosition.Y + t * (particle.m_Position.Y - particle.m_LastSafePosition.Y) };
+		}
+		else if (particle.m_Position.Y < particle.m_LastSafePosition.Y &&
+			particle.m_Position.Y >= rectangleCenter.Y - halfHeight) {
+			// Point moved up into the rectangle - collision with bottom edge
+			float t = (rectangleCenter.Y - halfHeight - prevRectangleCenter.Y) /
+				(particle.m_LastSafePosition.Y - particle.m_Position.Y);
+			return { particle.m_LastSafePosition.X + t * (particle.m_Position.X - particle.m_LastSafePosition.X),
+					rectangleCenter.Y - halfHeight };
+		}
+		else if (particle.m_Position.Y > particle.m_LastSafePosition.Y &&
+			particle.m_Position.Y <= rectangleCenter.Y + halfHeight) {
+			// Point moved down into the rectangle - collision with top edge
+			float t = (rectangleCenter.Y + halfHeight - prevRectangleCenter.Y) /
+				(particle.m_LastSafePosition.Y - particle.m_Position.Y);
+			return { particle.m_LastSafePosition.X + t * (particle.m_Position.X - particle.m_LastSafePosition.X),
+					rectangleCenter.Y + halfHeight };
+		}
+		else {
+			// No collision detected or point was already inside
+			return { -1.0f, -1.0f }; // Indicate no collision point
+		}
+	}
+
+
+
+	__device__ GpuVector2D getExpulsionPoint(Particle particle, SolidRectangle rectangle) {
+		float halfWidth = (rectangle.rightSide.Point1.X - rectangle.leftSide.Point1.X) / 2.0f;
+		float halfHeight = (rectangle.topSide.Point1.Y - rectangle.bottomSide.Point1.Y) / 2.0f;
+
+		Vector2D rectangleCenter = rectangle.m_Position;
+
+		// Check which edge the point is closest to
+		float distanceToLeft = particle.m_Position.X - rectangleCenter.X + halfWidth;
+		float distanceToRight = rectangleCenter.X + halfWidth - particle.m_Position.X;
+		float distanceToTop = rectangleCenter.Y + halfHeight - particle.m_Position.Y;
+		float distanceToBottom = particle.m_Position.Y - rectangleCenter.Y + halfHeight;
+
+		float minDistance = min(min(distanceToLeft, distanceToRight), min(distanceToTop, distanceToBottom));
+
+		if (minDistance == distanceToLeft) {
+			// Point closest to left edge - expel to the right
+			return { particle.m_Position.X + 2 * distanceToLeft, particle.m_Position.Y };
+		}
+		else if (minDistance == distanceToRight) {
+			// Point closest to right edge - expel to the left
+			return { particle.m_Position.X - 2 * distanceToRight, particle.m_Position.Y };
+		}
+		else if (minDistance == distanceToTop) {
+			// Point closest to top edge - expel to the bottom
+			return { particle.m_Position.X, particle.m_Position.Y - 2 * distanceToTop };
+		}
+		else {
+			// Point closest to bottom edge - expel to the top
+			return { particle.m_Position.X, particle.m_Position.Y + 2 * distanceToBottom };
+		}
+	}
 
 } // namespace CudaMath

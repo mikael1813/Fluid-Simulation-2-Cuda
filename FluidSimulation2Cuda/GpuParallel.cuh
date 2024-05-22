@@ -34,4 +34,6 @@ void GpuAllocate(std::vector<Particle>& particles, std::vector<Surface2D>& obsta
 
 void GpuFree();
 
+void GpuApplyExternalForces(std::vector<Particle>& particles, std::vector<Vector2D>& m_ExternalForces);
+
 #endif

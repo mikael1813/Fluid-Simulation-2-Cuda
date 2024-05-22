@@ -101,7 +101,7 @@ Environment::Environment() {
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
-	m_SolidObjects.push_back(SolidRectangle(10, 10, 0.5, Vector2D(640, 100)));
+	//m_SolidObjects.push_back(SolidRectangle(30, 30, 0.05, Vector2D(640, 50)));
 
 	GpuAllocate(m_Particles, m_Obstacles, interactionMatrixRows * interactionMatrixCols, m_ConsumerPipes, m_GeneratorPipes, m_SolidObjects);
 }
@@ -214,8 +214,20 @@ void Environment::newUpdate(float dt) {
 
 	time1 = std::chrono::steady_clock::now();
 
+	if (m_ExternalForces.size() > 0) {
+		GpuApplyExternalForces(m_Particles, m_ExternalForces);
+	}
+
 	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
 		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols);
+
+
+	/*float averageDensity = 0.0f;
+	for(int i = 0; i < m_ParticleCount; i++) {
+		averageDensity += m_Particles[i].m_Density;
+	}
+	averageDensity /= m_ParticleCount;
+	printf("Average density: %f\n", averageDensity);*/
 
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
@@ -230,5 +242,29 @@ void Environment::newUpdate(float dt) {
 	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
 	int x = 0;
+}
+
+void Environment::moveUp()
+{
+	Vector2D force = Vector2D(0, -100);
+	m_ExternalForces.push_back(force);
+}
+
+void Environment::moveDown()
+{
+	Vector2D force = Vector2D(0, 100);
+	m_ExternalForces.push_back(force);
+}
+
+void Environment::moveLeft()
+{
+	Vector2D force = Vector2D(-100, 0);
+	m_ExternalForces.push_back(force);
+}
+
+void Environment::moveRight()
+{
+	Vector2D force = Vector2D(100, 0);
+	m_ExternalForces.push_back(force);
 }
 
