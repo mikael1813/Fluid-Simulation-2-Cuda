@@ -67,6 +67,11 @@ Environment::Environment() {
 			posX = std::uniform_int_distribution<int>(100, SCREEN_WIDTH - 100)(gen);
 			posY = std::uniform_int_distribution<int>(100, SCREEN_HEIGHT - 100)(gen);
 
+			if (posX > 800 && posX < 1000 && posY > 200 && posY < 600) {
+				ok = false;
+				continue;
+			}
+
 			for (auto& particle : m_Particles) {
 				if (Math::squared_distance(particle.getPosition(), Vector2D(posX, posY)) <= particleRadius) {
 					ok = false;
@@ -100,6 +105,11 @@ Environment::Environment() {
 	/*m_Obstacles.push_back(Surface2D(500, 400, 600, 300));
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
+
+	m_Obstacles.push_back(Surface2D(800, 200, 1000, 200));
+	m_Obstacles.push_back(Surface2D(1000, 200, 1000, 600));
+	m_Obstacles.push_back(Surface2D(1000, 600, 800, 600));
+	m_Obstacles.push_back(Surface2D(800, 600, 800, 200));
 
 	//m_SolidObjects.push_back(SolidRectangle(30, 30, 0.05, Vector2D(640, 50)));
 
@@ -218,16 +228,16 @@ void Environment::newUpdate(float dt) {
 		GpuApplyExternalForces(m_Particles, m_ExternalForces);
 	}
 
-	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
-		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols);
 
-
-	/*float averageDensity = 0.0f;
+	float averageDensity = 0.0f;
 	for(int i = 0; i < m_ParticleCount; i++) {
 		averageDensity += m_Particles[i].m_Density;
 	}
 	averageDensity /= m_ParticleCount;
-	printf("Average density: %f\n", averageDensity);*/
+	//printf("Average density: %f\n", averageDensity);
+
+	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
+		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);
 
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);

@@ -12,6 +12,8 @@ constexpr int maxThreadsPerBlock = 512;
 
 constexpr float viscosityStrength = 0.1f;
 
+constexpr float SURFACE_TENSION_STRENGTH = 50;
+
 struct Range {
 	int start;
 	int end;
@@ -214,7 +216,7 @@ __device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, i
 }
 
 __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
-	int particleRadius, Range* lengths, int interactionMatrixRows, int interactionMatrixCols) {
+	int particleRadius, Range* lengths, int interactionMatrixRows, int interactionMatrixCols, float averageDensity) {
 
 	Particle particle = particles[index];
 
@@ -224,7 +226,9 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-	float perfectDensity = targetDensity;
+	float perfectDensity = averageDensity;
+
+	float influence = CudaMath::surfaceTensionSmoothingKernel(particle.m_Density, averageDensity);
 
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
@@ -237,14 +241,14 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
 				Particle otherParticle = particles[otherParticleIndex];
 
-				if (abs(otherParticle.m_Density - targetDensity) < perfectDensity) {
-					perfectDensity = abs(otherParticle.m_Density - targetDensity);
+				if (abs(otherParticle.m_Density - averageDensity) < perfectDensity) {
+					perfectDensity = abs(otherParticle.m_Density - averageDensity);
 
 					float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
 
 					GpuVector2D dir = distance < particleRadius ? GpuVector2D::getRandomDirection() : (GpuVector2D(otherParticle.m_PredictedPosition) - GpuVector2D(particle.m_PredictedPosition)) / distance;
 
-					surfaceTension = dir * 20;
+					surfaceTension = dir * influence * SURFACE_TENSION_STRENGTH;
 				}
 			}
 		}
@@ -255,7 +259,7 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 
 __device__ void updateParticleFutureVelocities(int index, Particle* particles, int praticlesSize,
 	int particleRadiusOfRepel, int particleRadius, Range* lengths, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, double dt)
+	size_t interactionMatrixCols, double dt, float averageDensity)
 {
 
 	Particle particle = particles[index];
@@ -271,7 +275,7 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 
 	if (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5) {
 		surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-			lengths, interactionMatrixRows, interactionMatrixCols);
+			lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
 		//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
 	}
 	//surfaceTension = GpuVector2D();
@@ -539,7 +543,7 @@ __global__ void specialUpdateDensities(Particle* particles, int praticlesSize, i
 
 __global__ void specialUpdateFutureVelocities(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
-	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt) {
+	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt, float averageDensity) {
 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -548,7 +552,7 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 	}
 
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
-		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt);
+		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt, averageDensity);
 }
 
 __global__ void specialUpdateCollisionsBetweenParticlesAndObstacles(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
@@ -946,7 +950,7 @@ void GpuFree() {
 void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols) {
+	size_t interactionMatrixCols, float averageDensity) {
 
 	int blockSize = (particlesSize < maxThreadsPerBlock) ? particlesSize : maxThreadsPerBlock;
 	int numBlocks = (particlesSize + blockSize - 1) / blockSize;
@@ -963,7 +967,7 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, 
 
 	specialUpdateFutureVelocities << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
-		interactionMatrixCols, deviceObstacles, obstacles.size(), dt);
+		interactionMatrixCols, deviceObstacles, obstacles.size(), dt, averageDensity);
 
 	cudaDeviceSynchronize();
 
@@ -1097,7 +1101,7 @@ void UpdatePipes(int particlesSize, int particleRadius) {
 void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols) {
+	size_t interactionMatrixCols, float averageDensity) {
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
@@ -1131,7 +1135,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 
 	// Launch CUDA kernel for updating particles
 	UpdateParticlesHelper(particles, particlesSize, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
-		obstacles, solidObjects, dt, interactionMatrixRows, interactionMatrixCols);
+		obstacles, solidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);
 
 
 	// Update pipes

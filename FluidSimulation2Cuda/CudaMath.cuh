@@ -170,6 +170,14 @@ namespace CudaMath {
 		return x * x * x;
 	}
 
+	__device__ float surfaceTensionSmoothingKernel(float particleDensity, float averageDensity) {
+		if (particleDensity >= averageDensity) {
+			return 0.0f;
+		}
+		float x = abs(averageDensity - particleDensity);
+		return x * x;
+	}
+
 	__device__ float convertDensityToPressure(float density) {
 		//targetDensity = 0.8f;
 		//const float pressureConstant = 10.0f;

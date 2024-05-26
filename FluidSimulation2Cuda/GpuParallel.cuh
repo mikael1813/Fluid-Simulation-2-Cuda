@@ -23,7 +23,7 @@ void GpuParallelCheckCollision(std::vector<Particle>& particles, int particleRad
 void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols);
+	size_t interactionMatrixCols, float averageDensity);
 
 void GpuAllocateInteractionMatrix(InteractionMatrixClass* interactionMatrix);
 
