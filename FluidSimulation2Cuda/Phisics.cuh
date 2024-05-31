@@ -1,5 +1,8 @@
 #pragma once
 
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+
 namespace constants {
 	constexpr double m_PI = 3.14159265358979323846f;
 }
@@ -8,73 +11,73 @@ namespace constants {
 
 struct Vector2D {
 
-	Vector2D() {
+	__host__ __device__ Vector2D() {
 		X = 0;
 		Y = 0;
 	}
 
-	Vector2D(float x, float y) {
+	__host__ __device__ Vector2D(float x, float y) {
 		X = x;
 		Y = y;
 	}
 
 	// Function to calculate the magnitude of a 2D vector (x, y)
-	float getMagnitude() const {
+	__host__ __device__ float getMagnitude() const {
 		return std::sqrt(X * X + Y * Y);
 	}
 
-	float getMagnitudeSquared() const {
+	__host__ __device__ float getMagnitudeSquared() const {
 		return X * X + Y * Y;
 	}
 
-	static Vector2D getRandomDirection();
+	__device__ static Vector2D getRandomDirection();
 
 	// add 2 vectors
-	Vector2D operator+(const Vector2D& other) const {
+	__host__ __device__ Vector2D operator+(const Vector2D& other) const {
 		return Vector2D(X + other.X, Y + other.Y);
 	}
 
 	// multiply by a scalar
-	Vector2D operator*(float scalar) const {
+	__host__ __device__ Vector2D operator*(float scalar) const {
 		return Vector2D(X * scalar, Y * scalar);
 	}
 
 	// dot product
-	float operator*(const Vector2D& other) const {
+	__host__ __device__ float operator*(const Vector2D& other) const {
 		return X * other.X + Y * other.Y;
 	}
 
 	// add 1 vector to current vector
-	Vector2D& operator+=(const Vector2D& other) {
+	__host__ __device__ Vector2D& operator+=(const Vector2D& other) {
 		X += other.X;
 		Y += other.Y;
 		return *this;
 	}
 
 	// substract 2 vectors
-	Vector2D operator-(const Vector2D& other) const {
+	__host__ __device__ Vector2D operator-(const Vector2D& other) const {
 		return Vector2D(X - other.X, Y - other.Y);
 	}
 
 	// subtract a vector from the current vector
-	Vector2D& operator-=(const Vector2D& other) {
+	__host__ __device__ Vector2D& operator-=(const Vector2D& other) {
 		X -= other.X;
 		Y -= other.Y;
 		return *this;
 	}
 
 	// divide by a scalar
-	Vector2D operator/(float scalar) const {
+	__host__ __device__ Vector2D operator/(float scalar) const {
 		return Vector2D(X / scalar, Y / scalar);
 	}
 
 	// float times vector
-	friend Vector2D operator*(float scalar, const Vector2D& vector) {
+	__host__ __device__ friend Vector2D operator*(float scalar, const Vector2D& vector) {
 		return vector * scalar;
 	}
 
 	// minus vector
-	Vector2D operator-() const {
+	__host__ __device__ Vector2D operator-() const {
 		return Vector2D(-X, -Y);
 	}
 
@@ -83,11 +86,6 @@ struct Vector2D {
 };
 
 struct Surface2D {
-
-	Surface2D() {
-		Point1 = Vector2D();
-		Point2 = Vector2D();
-	}
 
 	Surface2D(Vector2D point1, Vector2D point2) {
 		Point1 = point1;
@@ -108,30 +106,27 @@ struct Surface2D {
 namespace Math {
 
 	// Function to compute the squared distance between two points
-	float squared_distance(const Vector2D& p1, const Vector2D& p2);
+	__host__ __device__ float squared_distance(const Vector2D& p1, const Vector2D& p2);
 
 	// Function to calculate the slope of a line given two points
-	double calculateSlope(Vector2D a, Vector2D b);
+	__host__ __device__ double calculateSlope(Vector2D a, Vector2D b);
 
 	// Function to calculate the normal vector given the slope of the surface line
-	Vector2D calculateNormalVector(double surfaceLineSlope);
+	__host__ __device__ Vector2D calculateNormalVector(double surfaceLineSlope);
 
 	// Function to calculate the reflection vector given the incident vector and the normal vector
-	Vector2D calculateReflectionVector(const Vector2D& incidentVector, const Vector2D& normalVector);
+	__host__ __device__ Vector2D calculateReflectionVector(const Vector2D& incidentVector, const Vector2D& normalVector);
 
 	// Check if the line segment AB intersects the circle with center C and radius R
-	bool check_line_segment_circle_intersection(const Vector2D& A, const Vector2D& B, const Vector2D& C, float radius);
+	__host__ __device__ bool check_line_segment_circle_intersection(const Vector2D& A, const Vector2D& B, const Vector2D& C, float radius);
 
 	// Function to calculate the smoothing kernel
-	float smoothingKernel(float radius, float distance);
+	__host__ __device__ float smoothingKernel(float radius, float distance);
 
 	// Function to calculate the derivative of the smoothing kernel
-	float smoothingKernelDerivative(float radius, float distance);
+	__host__ __device__ float smoothingKernelDerivative(float radius, float distance);
 
 	// Function to calculate the viscosity smoothing kernel
-	float viscositySmoothingKernel(float radius, float distance);
-
-	// Function to calculate the first power of 2 bigger than n
-	unsigned int nextPowerOf2(unsigned int n);
+	__host__ __device__ float viscositySmoothingKernel(float radius, float distance);
 
 };

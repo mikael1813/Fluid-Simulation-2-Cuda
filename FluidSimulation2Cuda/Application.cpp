@@ -1,10 +1,73 @@
 #include "Application.hpp"
 #include "Timer.hpp"
 
+Environment* globalEnvironment;
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	// Check for specific key presses and actions
+	if (key == GLFW_KEY_W && action == GLFW_PRESS) {
+		// Call your method for W key press (e.g., move object up)
+		//yourObject.moveUp();
+		//printf("W key pressed\n");
+		globalEnvironment->moveUp();
+	}
+	else if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+		// Call your method for S key press (e.g., move object down)
+		//printf("S key pressed\n");
+		globalEnvironment->moveDown();
+	}
+	else if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+		// Call your method for A key press (e.g., move object left)
+		//printf("A key pressed\n");
+		globalEnvironment->moveLeft();
+	}
+	else if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+		// Call your method for D key press (e.g., move object right)
+		//printf("D key pressed\n");
+		globalEnvironment->moveRight();
+	}
+	// ... (similar checks for other keys as needed)
+}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
+}
+
+Environment* initializeEnvironment1(int screenWidth, int screenHeight) {
+
+	int particleRadius = 2;
+	int particleRadiusOfRepel = 50;
+
+	float particleRepulsionForce = 1.0f;
+
+	float viscosityStrength = 0.1f;
+
+	float how_far_into_the_future = 10.0f;
+
+	int thread_count = 4;
+
+	int interactionMatrixRows = screenHeight / particleRadiusOfRepel;
+	int interactionMatrixCols = screenWidth / particleRadiusOfRepel;
+
+	Environment* environment;
+
+	std::vector<Surface2D> obstacles;
+
+	obstacles.push_back(Surface2D(800, 200, 1000, 200));
+	obstacles.push_back(Surface2D(1000, 200, 1000, 600));
+	obstacles.push_back(Surface2D(1000, 600, 800, 600));
+	obstacles.push_back(Surface2D(800, 600, 800, 200));
+
+	std::vector<ConsumerPipe> consumers;
+	std::vector<GeneratorPipe> generators;
+
+	//environment = new Environment(obstacles, consumers, generators);
+
+	environment = new Environment(particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
+		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators);
+
+	return environment;
 }
 
 Application::Application()
@@ -15,8 +78,11 @@ Application::Application()
 		return;
 	}
 
+	int screenWidth = 1800;
+	int screenHeight = 900;
+
 	// Create a windowed mode window and its OpenGL context
-	m_window = glfwCreateWindow(1280, 720, "Circle Example", NULL, NULL);
+	m_window = glfwCreateWindow(screenWidth, screenHeight, "Circle Example", NULL, NULL);
 	if (!m_window) {
 		std::cerr << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
@@ -32,7 +98,11 @@ Application::Application()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 
-	m_environment = new Environment();
+	// Set the key callback function
+	glfwSetKeyCallback(m_window, keyCallback);
+
+	m_environment = initializeEnvironment1(screenWidth, screenHeight);
+	globalEnvironment = m_environment;
 }
 
 Application::~Application()

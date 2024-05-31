@@ -4,6 +4,7 @@
 #include <corecrt_math.h>
 
 #include "Phisics.hpp"
+#include "SolidObject.hpp"
 #include <utility>
 
 namespace Graphics {
@@ -47,6 +48,14 @@ namespace Graphics {
 		glVertex2f(a.X, a.Y);
 		glVertex2f(b.X, b.Y);
 		glEnd();
+	}
+
+	void DrawRectangle(int width, int height, SolidRectangle rectangle) {
+
+		DrawLine(width, height, rectangle.leftSide.Point1, rectangle.leftSide.Point2);
+		DrawLine(width, height, rectangle.rightSide.Point1, rectangle.rightSide.Point2);
+		DrawLine(width, height, rectangle.topSide.Point1, rectangle.topSide.Point2);
+		DrawLine(width, height, rectangle.bottomSide.Point1, rectangle.bottomSide.Point2);
 	}
 
 	//void drawSurface2D(SDL_Renderer* renderer, Surface2D surface) {

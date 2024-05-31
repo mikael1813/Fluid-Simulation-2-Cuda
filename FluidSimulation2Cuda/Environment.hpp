@@ -2,6 +2,7 @@
 
 #include "Particle.hpp"
 #include "Pipe.hpp"
+#include "SolidObject.hpp"
 
 //#include "SDL.h"
 
@@ -12,7 +13,10 @@
 class Environment
 {
 public:
-	Environment();
+	Environment(int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
+		int screenHeight, float viscosityStrength, float how_far_into_the_future, int thread_count,
+		int interactionMatrixRows, int interactionMatrixCols, std::vector<Surface2D> obstacles,
+		std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators);
 	~Environment();
 
 
@@ -20,9 +24,21 @@ public:
 	void update(float dt);
 	void newUpdate(float dt);
 
+	void moveUp();
+	void moveDown();
+	void moveLeft();
+	void moveRight();
+
 private:
 
-	int m_ParticleCount = 10000;
+	int m_ParticleCount = 3000;
+	//int m_ParticleCount = 20000;
+	//int m_ParticleCount = 10000;
+	int m_ParticleRadius;
+	int m_ParticleRadiusOfRepel;
+	int m_ParticleRepulsionForce;
+	int m_InteractionMatrixRows;
+	int m_InteractionMatrixCols;
 
 	std::vector<Particle> m_Particles;
 	std::vector<float> m_ParticleProperties;
@@ -31,7 +47,11 @@ private:
 	std::vector<ConsumerPipe> m_ConsumerPipes;
 	std::vector<GeneratorPipe> m_GeneratorPipes;
 
+	std::vector<SolidRectangle> m_SolidObjects;
+
 	std::vector<std::thread> m_Threads;
+
+	std::vector<Vector2D> m_ExternalForces;
 
 	float calculateDensity(Vector2D point);
 	float calculateProperty(Vector2D point);

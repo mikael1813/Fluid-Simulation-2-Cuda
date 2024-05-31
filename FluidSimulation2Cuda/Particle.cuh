@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Phisics.hpp"
+#include "Phisics.cuh"
 
 #include <iostream>
 #include <vector>
@@ -10,13 +10,8 @@ constexpr float GRAVITY = 10.0f;
 
 class Particle {
 public:
-	Particle(){
-		m_Exists = false;
-	}
-	Particle(float x, float y, int id) : m_Position(Vector2D(x, y)), m_ID(id), m_TemporaryVelocity(Vector2D()) {
-		m_LastSafePosition = m_Position;
-		m_Exists = true;
-	}
+	__host__ __device__ Particle(){}
+	__host__ __device__ Particle(float x, float y, int id) : m_Position(Vector2D(x, y)), m_ID(id), m_TemporaryVelocity(Vector2D()) {}
 	Vector2D m_PredictedPosition;
 	Vector2D m_LastSafePosition;
 	Vector2D m_FutureVelocity;
@@ -28,10 +23,8 @@ public:
 
 	float m_Density = 0.0f;
 	int m_ID;
-	bool m_Exists;
-	float m_Mass = 1.0f;
 
-	void update(float dt) {
+	__host__ __device__ void update(float dt) {
 		if (dt == 0) {
 			return;
 		}
@@ -57,28 +50,28 @@ public:
 		//m_Velocity = m_Velocity * 0.95f;
 	}
 
-	void updateVelocity() {
+	__host__ __device__ void updateVelocity() {
 		m_Velocity = m_FutureVelocity;
 	}
 
-	Vector2D getVelocity() {
+	__host__ __device__ Vector2D getVelocity() {
 		return m_Velocity;
 	}
 
-	void setVelocity(Vector2D velocity) {
+	__host__ __device__ void setVelocity(Vector2D velocity) {
 		m_Velocity = velocity;
 	}
 
-	Vector2D getPosition() {
+	__host__ __device__ Vector2D getPosition() {
 		return m_Position;
 	}
 
-	void setPosition(Vector2D position) {
+	__host__ __device__ void setPosition(Vector2D position) {
 		m_Position = position;
 	}
 
-	void addForce(Vector2D force) {
-		m_TemporaryVelocity += force / m_Mass;
+	__host__ __device__ void addForce(Vector2D force) {
+		m_TemporaryVelocity += force / mass;
 	}
 
 private:
@@ -88,4 +81,5 @@ private:
 	//std::vector<Vector2D> m_Forces;
 
 	float visible_radius = 2.0f;
+	float mass = 1.0f;
 };

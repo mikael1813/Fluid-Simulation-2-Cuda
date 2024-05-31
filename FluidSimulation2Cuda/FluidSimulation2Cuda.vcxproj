@@ -29,6 +29,7 @@
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="Phisics.hpp" />
     <ClInclude Include="Pipe.hpp" />
+    <ClInclude Include="SolidObject.hpp" />
     <ClInclude Include="Timer.hpp" />
   </ItemGroup>
   <ItemGroup>
