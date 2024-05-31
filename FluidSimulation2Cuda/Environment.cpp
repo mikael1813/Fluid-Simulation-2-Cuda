@@ -19,34 +19,23 @@
 
 //constexpr auto particleCount = 10000;
 
-constexpr auto particleRadius = 2;
-constexpr auto particleRadiusOfRepel = 50;
-constexpr auto particleDistance = 30;
-
-constexpr auto particleRepulsionForce = 3.0f;
-
-constexpr int SCREEN_WIDTH = 1280;
-constexpr int SCREEN_HEIGHT = 720;
-
-//constexpr float viscosityStrength = 0.0f;
-constexpr float viscosityStrength = 0.1f;
-
-constexpr float HOW_FAR_INTO_THE_FUTURE = 10.0f;
-
-constexpr int THREAD_COUNT = 4;
-
-int interactionMatrixRows = SCREEN_HEIGHT / particleRadiusOfRepel;
-int interactionMatrixCols = SCREEN_WIDTH / particleRadiusOfRepel;
-
 float ExampleFunction(Vector2D point) {
 	return cos(point.Y - 3 + sin(point.X));
 }
 
 
-Environment::Environment() {
+Environment::Environment(int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
+	int screenHeight, float viscosityStrength, float how_far_into_the_future, int thread_count,
+	int interactionMatrixRows, int interactionMatrixCols, std::vector<Surface2D> obstacles,
+	std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators) {
 
+	m_ParticleRadius = particleRadius;
+	m_ParticleRadiusOfRepel = particleRadiusOfRepel;
+	m_ParticleRepulsionForce = particleRepulsionForce;
+	m_InteractionMatrixRows = interactionMatrixRows;
+	m_InteractionMatrixCols = interactionMatrixCols;
 
-	InteractionMatrixClass::getInstance()->initializeMatrix(SCREEN_WIDTH, SCREEN_HEIGHT, particleRadiusOfRepel);
+	InteractionMatrixClass::getInstance()->initializeMatrix(screenWidth, screenHeight, particleRadiusOfRepel);
 
 	m_Particles = std::vector<Particle>{};
 
@@ -64,11 +53,22 @@ Environment::Environment() {
 		do {
 			ok = true;
 
-			posX = std::uniform_int_distribution<int>(100, SCREEN_WIDTH - 100)(gen);
-			posY = std::uniform_int_distribution<int>(100, SCREEN_HEIGHT - 100)(gen);
+			posX = std::uniform_int_distribution<int>(100, screenWidth - 100)(gen);
+			posY = std::uniform_int_distribution<int>(100, screenHeight - 100)(gen);
 
-			if (posX > 800 && posX < 1000 && posY > 200 && posY < 600) {
-				ok = false;
+			for (auto& obstacle : obstacles) {
+				// get the obstacles top left corner and bottom right corner
+				Vector2D topLeft = Vector2D(std::min(obstacle.Point1.X, obstacle.Point2.X), std::min(obstacle.Point1.Y, obstacle.Point2.Y));
+				Vector2D bottomRight = Vector2D(std::max(obstacle.Point1.X, obstacle.Point2.X), std::max(obstacle.Point1.Y, obstacle.Point2.Y));
+				
+				// check if the particle is inside the obstacle
+				if (posX >= topLeft.X && posX <= bottomRight.X && posY >= topLeft.Y && posY <= bottomRight.Y) {
+					ok = false;
+					break;
+				}
+			}
+
+			if (!ok) {
 				continue;
 			}
 
@@ -92,24 +92,31 @@ Environment::Environment() {
 		m_Particles.push_back(Particle());
 	}
 
-	m_Obstacles.push_back(Surface2D(50, 10, 1200, 11));
-	m_Obstacles.push_back(Surface2D(50, 10, 50, 700));
-	m_Obstacles.push_back(Surface2D(50, 699, 1200, 700));
-	m_Obstacles.push_back(Surface2D(1200, 10, 1200, 700));
+	m_Obstacles.push_back(Surface2D(0, 0, screenWidth, 0));
+	m_Obstacles.push_back(Surface2D(screenWidth, 0, screenWidth, screenHeight));
+	m_Obstacles.push_back(Surface2D(screenWidth, screenHeight, 0, screenHeight));
+	m_Obstacles.push_back(Surface2D(0, screenHeight, 0, 0));
 
-	//m_GeneratorPipes.push_back(GeneratorPipe(Vector2D(SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), 5));
-	//m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * SCREEN_WIDTH / 4, SCREEN_HEIGHT * 3 / 4), 10));
+	//m_GeneratorPipes.push_back(GeneratorPipe(Vector2D(screenWidth / 4, screenHeight / 2), 5));
+	//m_ConsumerPipes.push_back(ConsumerPipe(Vector2D(3 * screenWidth / 4, screenHeight * 3 / 4), 10));
 
-	//m_Obstacles.push_back(Surface2D(3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 - 50, 3 * SCREEN_WIDTH / 4 + 100, SCREEN_HEIGHT / 2 + 50));
+	//m_Obstacles.push_back(Surface2D(3 * screenWidth / 4 + 100, screenHeight / 2 - 50, 3 * screenWidth / 4 + 100, screenHeight / 2 + 50));
 
 	/*m_Obstacles.push_back(Surface2D(500, 400, 600, 300));
 	m_Obstacles.push_back(Surface2D(600, 300, 700, 400));
 	m_Obstacles.push_back(Surface2D(700, 400, 500, 400));*/
 
-	m_Obstacles.push_back(Surface2D(800, 200, 1000, 200));
-	m_Obstacles.push_back(Surface2D(1000, 200, 1000, 600));
-	m_Obstacles.push_back(Surface2D(1000, 600, 800, 600));
-	m_Obstacles.push_back(Surface2D(800, 600, 800, 200));
+	for (auto& obstacle : obstacles) {
+		m_Obstacles.push_back(obstacle);
+	}
+
+	for (auto& consumer : consumers) {
+		m_ConsumerPipes.push_back(consumer);
+	}
+
+	for (auto& generator : generators) {
+		m_GeneratorPipes.push_back(generator);
+	}
 
 	//m_SolidObjects.push_back(SolidRectangle(30, 30, 0.05, Vector2D(640, 50)));
 
@@ -147,7 +154,7 @@ void Environment::renderParticles(int width, int height) {
 		Graphics::velocityToColor(particle.getVelocity().getMagnitude(), red, green, blue);
 
 		glColor4f(red, green, blue, 1.0f);
-		Graphics::DrawCircle(width, height, particle.getPosition().X, particle.getPosition().Y, particleRadius * 2, 20);
+		Graphics::DrawCircle(width, height, particle.getPosition().X, particle.getPosition().Y, m_ParticleRadius * 2, 20);
 
 		/*glColor4f(1.0, 1.0, 1.0, 0.4f);
 		Graphics::DrawLine(width, height, particle.m_Position, particle.m_Position + vc);*/
@@ -196,22 +203,22 @@ void Environment::render(int width, int height)
 	int x = 0;
 }
 
-bool customCompare(Particle* a, Particle* b) {
-	// Define your custom comparison logic here
-	// For example, sort in descending order
-
-	int rowA = a->m_Position.Y / particleRadiusOfRepel;
-	int colA = a->m_Position.X / particleRadiusOfRepel;
-
-	int rowB = b->m_Position.Y / particleRadiusOfRepel;
-	int colB = b->m_Position.X / particleRadiusOfRepel;
-
-	if (rowA == rowB) {
-		return colA < colB;
-	}
-
-	return rowA < rowB;
-}
+//bool customCompare(Particle* a, Particle* b) {
+//	// Define your custom comparison logic here
+//	// For example, sort in descending order
+//
+//	int rowA = a->m_Position.Y / m_ParticleRadiusOfRepel;
+//	int colA = a->m_Position.X / m_ParticleRadiusOfRepel;
+//
+//	int rowB = b->m_Position.Y / m_ParticleRadiusOfRepel;
+//	int colB = b->m_Position.X / m_ParticleRadiusOfRepel;
+//
+//	if (rowA == rowB) {
+//		return colA < colB;
+//	}
+//
+//	return rowA < rowB;
+//}
 
 void Environment::newUpdate(float dt) {
 
@@ -230,14 +237,17 @@ void Environment::newUpdate(float dt) {
 
 
 	float averageDensity = 0.0f;
-	for(int i = 0; i < m_ParticleCount; i++) {
+	/*for(int i = 0; i < m_ParticleCount; i++) {
 		averageDensity += m_Particles[i].m_Density;
 	}
-	averageDensity /= m_ParticleCount;
+	averageDensity /= m_ParticleCount;*/
 	//printf("Average density: %f\n", averageDensity);
 
-	GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
-		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);
+	GpuUpdateParticles(m_Particles, m_ParticleCount, m_ParticleRadiusOfRepel, m_ParticleRadius, m_ParticleRepulsionForce,
+				m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity);
+
+	/*GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
+		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);*/
 
 	/*for (auto& pipe : m_Pipes) {
 		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);

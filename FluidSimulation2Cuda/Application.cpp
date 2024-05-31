@@ -33,6 +33,43 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
+Environment* initializeEnvironment1(int screenWidth, int screenHeight) {
+
+	int particleRadius = 2;
+	int particleRadiusOfRepel = 50;
+
+	float particleRepulsionForce = 1.0f;
+
+	float viscosityStrength = 0.1f;
+
+	float how_far_into_the_future = 10.0f;
+
+	int thread_count = 4;
+
+	int interactionMatrixRows = screenHeight / particleRadiusOfRepel;
+	int interactionMatrixCols = screenWidth / particleRadiusOfRepel;
+
+	Environment* environment;
+
+	std::vector<Surface2D> obstacles;
+
+	obstacles.push_back(Surface2D(800, 200, 1000, 200));
+	obstacles.push_back(Surface2D(1000, 200, 1000, 600));
+	obstacles.push_back(Surface2D(1000, 600, 800, 600));
+	obstacles.push_back(Surface2D(800, 600, 800, 200));
+
+	std::vector<ConsumerPipe> consumers;
+	std::vector<GeneratorPipe> generators;
+
+	//environment = new Environment(obstacles, consumers, generators);
+
+	environment = new Environment(particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
+		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators);
+
+	return environment;
+}
+
 Application::Application()
 {
 	// Initialize GLFW
@@ -41,8 +78,11 @@ Application::Application()
 		return;
 	}
 
+	int screenWidth = 1800;
+	int screenHeight = 900;
+
 	// Create a windowed mode window and its OpenGL context
-	m_window = glfwCreateWindow(1280, 720, "Circle Example", NULL, NULL);
+	m_window = glfwCreateWindow(screenWidth, screenHeight, "Circle Example", NULL, NULL);
 	if (!m_window) {
 		std::cerr << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
@@ -57,11 +97,11 @@ Application::Application()
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
-	
+
 	// Set the key callback function
 	glfwSetKeyCallback(m_window, keyCallback);
 
-	m_environment = new Environment();
+	m_environment = initializeEnvironment1(screenWidth, screenHeight);
 	globalEnvironment = m_environment;
 }
 

@@ -164,13 +164,7 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 
 				float slope = CudaMath::smoothingKernelDerivative(particleRadiusOfRepel, distance);
 
-				float density = otherParticle.m_Density;
-
-				/*if (density == 0) {
-					printf("density: %f, index: %d\n", density, index);
-				}*/
-
-				float sharedPressure = CudaMath::calculateSharedPressure(density, otherParticle.m_Density);
+				float sharedPressure = CudaMath::calculateSharedPressure(particle.m_Density, otherParticle.m_Density);
 
 				pressureForce += -sharedPressure * dir * slope * otherParticle.m_Mass /*/ density*/;
 			}
@@ -273,16 +267,12 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 
 	GpuVector2D surfaceTension = GpuVector2D();
 
-	if (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5) {
-		surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-			lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
-		//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
-	}
-	//surfaceTension = GpuVector2D();
-	//pressureForce = GpuVector2D(300, 300);
-	/*if (isnan(pressureForce.X) || isnan(pressureForce.Y)) {
-		printf("pressureForceX: %f , pressureForceY: %f, index: %d\n", pressureForce.X, pressureForce.Y, index);
-	}*/
+	//if (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5) {
+	//	surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+	//		lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
+	//	//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
+	//}
+	
 	GpuVector2D pressureAcceleration = pressureForce / particle.m_Density;
 
 	GpuVector2D viscosityForce = calculateViscosityForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
@@ -441,74 +431,6 @@ __device__ void updateCollisionsBetweenParticlesAndSolidObjects(int particleInde
 
 	//}
 }
-
-//__global__ void specialUpdateKernel(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
-//	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
-//	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt) {
-//
-//	int index = blockIdx.x * blockDim.x + threadIdx.x;
-//
-//	printf("important index: %d \n", index);
-//
-//	if (index >= praticlesSize) {
-//		return;
-//	}
-//
-//	//printf("index: %d \n", index);
-//
-//	Particle particle = particles[index];
-//
-//	GpuVector2D newPredictedPosition = GpuVector2D(particles[index].m_Position) +
-//		GpuVector2D(particles[index].m_Velocity) * dt * HOW_FAR_INTO_THE_FUTURE;
-//
-//	//printf("index: %d, newPredictedPosition: %f %f \n", index, newPredictedPosition.X, newPredictedPosition.Y);
-//
-//	particles[index].m_PredictedPosition.X = newPredictedPosition.X;
-//	particles[index].m_PredictedPosition.Y = newPredictedPosition.Y;
-//
-//	// Synchronize all threads in the block
-//	atomicAdd(&counterPredictedPositionsDone, 1);
-//
-//	while (counterPredictedPositionsDone < praticlesSize) {
-//		continue;
-//	}
-//	// calculate densities
-//
-//	updateParticleDensities(index, particles, praticlesSize, particleRadiusOfRepel, lengths,
-//		interactionMatrixRows, interactionMatrixCols);
-//
-//	//printf("index: %d, density: %f \n", index, particles[index].m_Density);
-//
-//	// calculate densities
-//
-//	atomicAdd(&counterDensitiesDone, 1);
-//
-//	while (counterDensitiesDone < praticlesSize) {
-//		continue;
-//	}
-//
-//	// calculate future velocities
-//
-//	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
-//		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt);
-//
-//	// calculate future velocities
-//
-//	atomicAdd(&counterFutureVelocitiesDone, 1);
-//
-//	while (counterFutureVelocitiesDone < praticlesSize) {
-//		continue;
-//	}
-//
-//	// check collisions
-//
-//	/*updateCollisions(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-//		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, obstacles, obstaclesSize);*/
-//
-//		// check collisions
-//
-//
-//}
 
 __global__ void specialUpdatePredictedPositions(Particle* particles, int praticlesSize, double dt) {
 
