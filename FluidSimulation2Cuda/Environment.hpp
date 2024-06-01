@@ -13,7 +13,7 @@
 class Environment
 {
 public:
-	Environment(int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
+	Environment(int particleCount, int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
 		int screenHeight, float viscosityStrength, float how_far_into_the_future, int thread_count,
 		int interactionMatrixRows, int interactionMatrixCols, std::vector<Surface2D> obstacles,
 		std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators);

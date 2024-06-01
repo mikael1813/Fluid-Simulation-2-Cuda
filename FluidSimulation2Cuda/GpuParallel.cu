@@ -511,186 +511,186 @@ __global__ void specialUpdateCollisionsBetweenParticlesAndParticles(Particle* pa
 		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols);
 }
 
-__global__ void specialUpdateCollisionsBetweenParticlesAndSolidObjects(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
-	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
-	int interactionMatrixCols, SolidRectangle* solidObjects, int solidObjectsSize, double dt) {
+//__global__ void specialUpdateCollisionsBetweenParticlesAndSolidObjects(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+//	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
+//	int interactionMatrixCols, SolidRectangle* solidObjects, int solidObjectsSize, double dt) {
+//
+//	int particleIndex = blockIdx.x * blockDim.x + threadIdx.x;
+//
+//	if (particleIndex >= praticlesSize) {
+//		return;
+//	}
+//
+//	int solidObjectsIndex = blockIdx.y;
+//
+//	if (solidObjectsIndex >= solidObjectsSize) {
+//		return;
+//	}
+//
+//	updateCollisionsBetweenParticlesAndSolidObjects(particleIndex, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+//		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, solidObjectsIndex, solidObjects, solidObjectsSize);
+//}
 
-	int particleIndex = blockIdx.x * blockDim.x + threadIdx.x;
-
-	if (particleIndex >= praticlesSize) {
-		return;
-	}
-
-	int solidObjectsIndex = blockIdx.y;
-
-	if (solidObjectsIndex >= solidObjectsSize) {
-		return;
-	}
-
-	updateCollisionsBetweenParticlesAndSolidObjects(particleIndex, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-		particleRepulsionForce, lengths, interactionMatrixRows, interactionMatrixCols, solidObjectsIndex, solidObjects, solidObjectsSize);
-}
-
-__device__ void specialUpdateSolidObject(int objectIndex, SolidRectangle* solidObjects, int solidObjectsSize, double dt) {
-
-	solidObjects[objectIndex].m_Velocity.X = solidObjects[objectIndex].m_FutureVelocity.X;
-	solidObjects[objectIndex].m_Velocity.Y = solidObjects[objectIndex].m_FutureVelocity.Y;
-
-	//Vector2D gravity(0.0f, GRAVITY);
-
-	solidObjects[objectIndex].m_Velocity.Y += GRAVITY * dt;
-
-	solidObjects[objectIndex].m_PreviousPositon.X = solidObjects[objectIndex].m_Position.X;
-	solidObjects[objectIndex].m_PreviousPositon.Y = solidObjects[objectIndex].m_Position.Y;
-
-	solidObjects[objectIndex].m_Position.X = solidObjects[objectIndex].m_Position.X + solidObjects[objectIndex].m_Velocity.X * dt;
-	solidObjects[objectIndex].m_Position.Y = solidObjects[objectIndex].m_Position.Y + solidObjects[objectIndex].m_Velocity.Y * dt;
-
-	GpuVector2D positionChange = GpuVector2D(solidObjects[objectIndex].m_Position) - GpuVector2D(solidObjects[objectIndex].m_PreviousPositon);
-
-	solidObjects[objectIndex].leftSide.Point1.X = solidObjects[objectIndex].leftSide.Point1.X + positionChange.X;
-	solidObjects[objectIndex].leftSide.Point1.Y = solidObjects[objectIndex].leftSide.Point1.Y + positionChange.Y;
-
-	solidObjects[objectIndex].leftSide.Point2.X = solidObjects[objectIndex].leftSide.Point2.X + positionChange.X;
-	solidObjects[objectIndex].leftSide.Point2.Y = solidObjects[objectIndex].leftSide.Point2.Y + positionChange.Y;
-
-	solidObjects[objectIndex].rightSide.Point1.X = solidObjects[objectIndex].rightSide.Point1.X + positionChange.X;
-	solidObjects[objectIndex].rightSide.Point1.Y = solidObjects[objectIndex].rightSide.Point1.Y + positionChange.Y;
-
-	solidObjects[objectIndex].rightSide.Point2.X = solidObjects[objectIndex].rightSide.Point2.X + positionChange.X;
-	solidObjects[objectIndex].rightSide.Point2.Y = solidObjects[objectIndex].rightSide.Point2.Y + positionChange.Y;
-
-	solidObjects[objectIndex].topSide.Point1.X = solidObjects[objectIndex].topSide.Point1.X + positionChange.X;
-	solidObjects[objectIndex].topSide.Point1.Y = solidObjects[objectIndex].topSide.Point1.Y + positionChange.Y;
-
-	solidObjects[objectIndex].topSide.Point2.X = solidObjects[objectIndex].topSide.Point2.X + positionChange.X;
-	solidObjects[objectIndex].topSide.Point2.Y = solidObjects[objectIndex].topSide.Point2.Y + positionChange.Y;
-
-	solidObjects[objectIndex].bottomSide.Point1.X = solidObjects[objectIndex].bottomSide.Point1.X + positionChange.X;
-	solidObjects[objectIndex].bottomSide.Point1.Y = solidObjects[objectIndex].bottomSide.Point1.Y + positionChange.Y;
-
-	solidObjects[objectIndex].bottomSide.Point2.X = solidObjects[objectIndex].bottomSide.Point2.X + positionChange.X;
-	solidObjects[objectIndex].bottomSide.Point2.Y = solidObjects[objectIndex].bottomSide.Point2.Y + positionChange.Y;
-
-}
-
-__global__ void specialUpdateFutureVelocitiesForSolidObjects(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
-	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
-	int interactionMatrixCols, SolidRectangle* solidObjects, int solidObjectsSize, double dt) {
-	int index = threadIdx.x;
-
-	if (index >= solidObjectsSize) {
-		return;
-	}
-
-	// print position of object
-	//printf("index: %d, position: %f %f \n", index, solidObjects[index].m_Position.X, solidObjects[index].m_Position.Y);
-
-	solidObjects[index].m_FutureVelocity.X = solidObjects[index].m_Velocity.X;
-	solidObjects[index].m_FutureVelocity.Y = solidObjects[index].m_Velocity.Y;
-
-	SolidRectangle object = solidObjects[index];
-
-	int row = solidObjects[index].m_Position.Y / particleRadiusOfRepel;
-	int col = solidObjects[index].m_Position.X / particleRadiusOfRepel;
-
-	/*for (int i = -1; i < 2; i++) {
-		for (int j = -1; j < 2; j++) {
-			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
-				continue;
-			}
-
-			int lengthIndex = (row + i) * interactionMatrixCols + col + j;
-
-			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
-				Particle otherParticle = particles[otherParticleIndex];
-				if (!otherParticle.m_Exists) {
-					continue;
-				}
-				numberOfParticles++;
-			}
-		}
-	}*/
-
-	// float radiusOfAction = sqrt(pow(solidObjects[index].m_Height, 2) + pow(solidObjects[index].m_Width, 2));
-	float density = 0.0f;
-
-	for (int i = -1; i < 2; i++) {
-		for (int j = -1; j < 2; j++) {
-			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
-				continue;
-			}
-
-			int lengthIndex = (row + i) * interactionMatrixCols + col + j;
-
-			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
-				Particle otherParticle = particles[otherParticleIndex];
-				if (!otherParticle.m_Exists) {
-					continue;
-				}
-
-				float distance = sqrt(CudaMath::squared_distance(object.m_Position, otherParticle.m_PredictedPosition));
-				float influence = CudaMath::smoothingKernel(particleRadiusOfRepel, distance);
-				density += otherParticle.m_Mass * influence;
-
-				if ((object.topSide.Point1.X <= otherParticle.m_Position.X &&
-					otherParticle.m_Position.X <= object.bottomSide.Point2.X) &&
-					(object.leftSide.Point1.Y <= otherParticle.m_Position.Y &&
-						otherParticle.m_Position.Y <= object.rightSide.Point2.Y)) {
-					//GpuVector2D position = CudaMath::getExpulsionPoint(otherParticle, object);
-
-					solidObjects[index].m_FutureVelocity.X = (object.m_Mass - otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
-						object.m_Velocity.X + (2 * otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
-						otherParticle.m_Velocity.X;
-					solidObjects[index].m_FutureVelocity.Y = (object.m_Mass - otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
-						object.m_Velocity.Y + (2 * otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
-						otherParticle.m_Velocity.Y;
-
-					float otherParticleMass = otherParticle.m_Density * 3.1415f * pow(particleRadius, 2);
-					//particles[otherParticleIndex].m_Position.X = position.X;
-					//particles[otherParticleIndex].m_Position.Y = position.Y;
-					//particles[otherParticleIndex].m_Velocity.X += object.m_Velocity.X * object.m_Mass / otherParticle.m_Mass;
-					particles[otherParticleIndex].m_Velocity.X = (2 * object.m_Mass) / (object.m_Mass + otherParticleMass) *
-						object.m_Velocity.X + (-object.m_Mass + otherParticleMass) / (object.m_Mass + otherParticleMass) *
-						otherParticle.m_Velocity.X;
-					//particles[otherParticleIndex].m_Velocity.Y += object.m_Velocity.Y * object.m_Mass / otherParticle.m_Mass;
-					particles[otherParticleIndex].m_Velocity.Y = (2 * object.m_Mass) / (object.m_Mass + otherParticleMass) *
-						object.m_Velocity.Y + (-object.m_Mass + otherParticleMass) / (object.m_Mass + otherParticleMass) *
-						otherParticle.m_Velocity.Y;
-
-					while ((object.topSide.Point1.X <= particles[otherParticleIndex].m_Position.X &&
-						particles[otherParticleIndex].m_Position.X <= object.bottomSide.Point2.X) &&
-						(object.leftSide.Point1.Y <= particles[otherParticleIndex].m_Position.Y &&
-							particles[otherParticleIndex].m_Position.Y <= object.rightSide.Point2.Y)) {
-						particles[otherParticleIndex].m_Position.X += particles[otherParticleIndex].m_Velocity.X * dt;
-						particles[otherParticleIndex].m_Position.Y += particles[otherParticleIndex].m_Velocity.Y * dt;
-					}
-
-
-				}
-
-
-			}
-		}
-	}
-
-	float volume = 3.1415f * pow(particleRadiusOfRepel, 2);
-
-	density = density / volume * 1000;
-
-	/*float arhimedeInfluence = CudaMath::convertDensitiesToArhimedeInfluence(object.m_Density, density);
-
-	GpuVector2D arhimedeForce = GpuVector2D(0, arhimedeInfluence * GRAVITY) * 1 / 8;
-
-	solidObjects[index].m_FutureVelocity.Y += arhimedeForce.Y;*/
-
-	//printf("density: %f \n", density);
-
-	solidObjects[index].m_Velocity.X = solidObjects[index].m_FutureVelocity.X;
-	solidObjects[index].m_Velocity.Y = solidObjects[index].m_FutureVelocity.Y;
-
-	specialUpdateSolidObject(index, solidObjects, solidObjectsSize, dt);
-}
+//__device__ void specialUpdateSolidObject(int objectIndex, SolidRectangle* solidObjects, int solidObjectsSize, double dt) {
+//
+//	solidObjects[objectIndex].m_Velocity.X = solidObjects[objectIndex].m_FutureVelocity.X;
+//	solidObjects[objectIndex].m_Velocity.Y = solidObjects[objectIndex].m_FutureVelocity.Y;
+//
+//	//Vector2D gravity(0.0f, GRAVITY);
+//
+//	solidObjects[objectIndex].m_Velocity.Y += GRAVITY * dt;
+//
+//	solidObjects[objectIndex].m_PreviousPositon.X = solidObjects[objectIndex].m_Position.X;
+//	solidObjects[objectIndex].m_PreviousPositon.Y = solidObjects[objectIndex].m_Position.Y;
+//
+//	solidObjects[objectIndex].m_Position.X = solidObjects[objectIndex].m_Position.X + solidObjects[objectIndex].m_Velocity.X * dt;
+//	solidObjects[objectIndex].m_Position.Y = solidObjects[objectIndex].m_Position.Y + solidObjects[objectIndex].m_Velocity.Y * dt;
+//
+//	GpuVector2D positionChange = GpuVector2D(solidObjects[objectIndex].m_Position) - GpuVector2D(solidObjects[objectIndex].m_PreviousPositon);
+//
+//	solidObjects[objectIndex].leftSide.Point1.X = solidObjects[objectIndex].leftSide.Point1.X + positionChange.X;
+//	solidObjects[objectIndex].leftSide.Point1.Y = solidObjects[objectIndex].leftSide.Point1.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].leftSide.Point2.X = solidObjects[objectIndex].leftSide.Point2.X + positionChange.X;
+//	solidObjects[objectIndex].leftSide.Point2.Y = solidObjects[objectIndex].leftSide.Point2.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].rightSide.Point1.X = solidObjects[objectIndex].rightSide.Point1.X + positionChange.X;
+//	solidObjects[objectIndex].rightSide.Point1.Y = solidObjects[objectIndex].rightSide.Point1.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].rightSide.Point2.X = solidObjects[objectIndex].rightSide.Point2.X + positionChange.X;
+//	solidObjects[objectIndex].rightSide.Point2.Y = solidObjects[objectIndex].rightSide.Point2.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].topSide.Point1.X = solidObjects[objectIndex].topSide.Point1.X + positionChange.X;
+//	solidObjects[objectIndex].topSide.Point1.Y = solidObjects[objectIndex].topSide.Point1.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].topSide.Point2.X = solidObjects[objectIndex].topSide.Point2.X + positionChange.X;
+//	solidObjects[objectIndex].topSide.Point2.Y = solidObjects[objectIndex].topSide.Point2.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].bottomSide.Point1.X = solidObjects[objectIndex].bottomSide.Point1.X + positionChange.X;
+//	solidObjects[objectIndex].bottomSide.Point1.Y = solidObjects[objectIndex].bottomSide.Point1.Y + positionChange.Y;
+//
+//	solidObjects[objectIndex].bottomSide.Point2.X = solidObjects[objectIndex].bottomSide.Point2.X + positionChange.X;
+//	solidObjects[objectIndex].bottomSide.Point2.Y = solidObjects[objectIndex].bottomSide.Point2.Y + positionChange.Y;
+//
+//}
+//
+//__global__ void specialUpdateFutureVelocitiesForSolidObjects(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
+//	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
+//	int interactionMatrixCols, SolidRectangle* solidObjects, int solidObjectsSize, double dt) {
+//	int index = threadIdx.x;
+//
+//	if (index >= solidObjectsSize) {
+//		return;
+//	}
+//
+//	// print position of object
+//	//printf("index: %d, position: %f %f \n", index, solidObjects[index].m_Position.X, solidObjects[index].m_Position.Y);
+//
+//	solidObjects[index].m_FutureVelocity.X = solidObjects[index].m_Velocity.X;
+//	solidObjects[index].m_FutureVelocity.Y = solidObjects[index].m_Velocity.Y;
+//
+//	SolidRectangle object = solidObjects[index];
+//
+//	int row = solidObjects[index].m_Position.Y / particleRadiusOfRepel;
+//	int col = solidObjects[index].m_Position.X / particleRadiusOfRepel;
+//
+//	/*for (int i = -1; i < 2; i++) {
+//		for (int j = -1; j < 2; j++) {
+//			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
+//				continue;
+//			}
+//
+//			int lengthIndex = (row + i) * interactionMatrixCols + col + j;
+//
+//			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
+//				Particle otherParticle = particles[otherParticleIndex];
+//				if (!otherParticle.m_Exists) {
+//					continue;
+//				}
+//				numberOfParticles++;
+//			}
+//		}
+//	}*/
+//
+//	// float radiusOfAction = sqrt(pow(solidObjects[index].m_Height, 2) + pow(solidObjects[index].m_Width, 2));
+//	float density = 0.0f;
+//
+//	for (int i = -1; i < 2; i++) {
+//		for (int j = -1; j < 2; j++) {
+//			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
+//				continue;
+//			}
+//
+//			int lengthIndex = (row + i) * interactionMatrixCols + col + j;
+//
+//			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
+//				Particle otherParticle = particles[otherParticleIndex];
+//				if (!otherParticle.m_Exists) {
+//					continue;
+//				}
+//
+//				float distance = sqrt(CudaMath::squared_distance(object.m_Position, otherParticle.m_PredictedPosition));
+//				float influence = CudaMath::smoothingKernel(particleRadiusOfRepel, distance);
+//				density += otherParticle.m_Mass * influence;
+//
+//				if ((object.topSide.Point1.X <= otherParticle.m_Position.X &&
+//					otherParticle.m_Position.X <= object.bottomSide.Point2.X) &&
+//					(object.leftSide.Point1.Y <= otherParticle.m_Position.Y &&
+//						otherParticle.m_Position.Y <= object.rightSide.Point2.Y)) {
+//					//GpuVector2D position = CudaMath::getExpulsionPoint(otherParticle, object);
+//
+//					solidObjects[index].m_FutureVelocity.X = (object.m_Mass - otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
+//						object.m_Velocity.X + (2 * otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
+//						otherParticle.m_Velocity.X;
+//					solidObjects[index].m_FutureVelocity.Y = (object.m_Mass - otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
+//						object.m_Velocity.Y + (2 * otherParticle.m_Mass) / (object.m_Mass + otherParticle.m_Mass) *
+//						otherParticle.m_Velocity.Y;
+//
+//					float otherParticleMass = otherParticle.m_Density * 3.1415f * pow(particleRadius, 2);
+//					//particles[otherParticleIndex].m_Position.X = position.X;
+//					//particles[otherParticleIndex].m_Position.Y = position.Y;
+//					//particles[otherParticleIndex].m_Velocity.X += object.m_Velocity.X * object.m_Mass / otherParticle.m_Mass;
+//					particles[otherParticleIndex].m_Velocity.X = (2 * object.m_Mass) / (object.m_Mass + otherParticleMass) *
+//						object.m_Velocity.X + (-object.m_Mass + otherParticleMass) / (object.m_Mass + otherParticleMass) *
+//						otherParticle.m_Velocity.X;
+//					//particles[otherParticleIndex].m_Velocity.Y += object.m_Velocity.Y * object.m_Mass / otherParticle.m_Mass;
+//					particles[otherParticleIndex].m_Velocity.Y = (2 * object.m_Mass) / (object.m_Mass + otherParticleMass) *
+//						object.m_Velocity.Y + (-object.m_Mass + otherParticleMass) / (object.m_Mass + otherParticleMass) *
+//						otherParticle.m_Velocity.Y;
+//
+//					while ((object.topSide.Point1.X <= particles[otherParticleIndex].m_Position.X &&
+//						particles[otherParticleIndex].m_Position.X <= object.bottomSide.Point2.X) &&
+//						(object.leftSide.Point1.Y <= particles[otherParticleIndex].m_Position.Y &&
+//							particles[otherParticleIndex].m_Position.Y <= object.rightSide.Point2.Y)) {
+//						particles[otherParticleIndex].m_Position.X += particles[otherParticleIndex].m_Velocity.X * dt;
+//						particles[otherParticleIndex].m_Position.Y += particles[otherParticleIndex].m_Velocity.Y * dt;
+//					}
+//
+//
+//				}
+//
+//
+//			}
+//		}
+//	}
+//
+//	float volume = 3.1415f * pow(particleRadiusOfRepel, 2);
+//
+//	density = density / volume * 1000;
+//
+//	/*float arhimedeInfluence = CudaMath::convertDensitiesToArhimedeInfluence(object.m_Density, density);
+//
+//	GpuVector2D arhimedeForce = GpuVector2D(0, arhimedeInfluence * GRAVITY) * 1 / 8;
+//
+//	solidObjects[index].m_FutureVelocity.Y += arhimedeForce.Y;*/
+//
+//	//printf("density: %f \n", density);
+//
+//	solidObjects[index].m_Velocity.X = solidObjects[index].m_FutureVelocity.X;
+//	solidObjects[index].m_Velocity.Y = solidObjects[index].m_FutureVelocity.Y;
+//
+//	specialUpdateSolidObject(index, solidObjects, solidObjectsSize, dt);
+//}
 
 __global__ void resetGlobalCounter() {
 	counterDensitiesDone = 0;
@@ -911,11 +911,11 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, 
 	// Wait for kernel to finish
 	cudaDeviceSynchronize();
 
-	specialUpdateFutureVelocitiesForSolidObjects << <1, solidObjects.size() >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
+	/*specialUpdateFutureVelocitiesForSolidObjects << <1, solidObjects.size() >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
 		interactionMatrixCols, deviceSolidObjects, solidObjects.size(), dt);
 
-	cudaDeviceSynchronize();
+	cudaDeviceSynchronize();*/
 }
 
 __global__ void specialUpdateConsumerPipes(Particle* particles, int particlesSize, int particleRadius, ConsumerPipe* consumerPipes, size_t consumerPipesSize) {
@@ -1027,6 +1027,9 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
+	// Update pipes
+	UpdatePipes(particlesSize, particleRadius);
+
 	//Set number of threads and blocks for kernel calls
 	int threadsPerBlock = maxThreadsPerBlock;
 	int blocksPerGrid = (particles.size() + threadsPerBlock - 1) / threadsPerBlock;
@@ -1058,10 +1061,6 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 	// Launch CUDA kernel for updating particles
 	UpdateParticlesHelper(particles, particlesSize, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
 		obstacles, solidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);
-
-
-	// Update pipes
-	UpdatePipes(particlesSize, particleRadius);
 
 	Particle* output = new Particle[particles.size()];
 

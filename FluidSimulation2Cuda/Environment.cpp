@@ -24,10 +24,12 @@ float ExampleFunction(Vector2D point) {
 }
 
 
-Environment::Environment(int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
+Environment::Environment(int tmp_particleCount, int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
 	int screenHeight, float viscosityStrength, float how_far_into_the_future, int thread_count,
 	int interactionMatrixRows, int interactionMatrixCols, std::vector<Surface2D> obstacles,
 	std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators) {
+
+	m_ParticleCount = tmp_particleCount;
 
 	m_ParticleRadius = particleRadius;
 	m_ParticleRadiusOfRepel = particleRadiusOfRepel;
@@ -56,15 +58,23 @@ Environment::Environment(int particleRadius, int particleRadiusOfRepel, float pa
 			posX = std::uniform_int_distribution<int>(100, screenWidth - 100)(gen);
 			posY = std::uniform_int_distribution<int>(100, screenHeight - 100)(gen);
 
-			for (auto& obstacle : obstacles) {
-				// get the obstacles top left corner and bottom right corner
-				Vector2D topLeft = Vector2D(std::min(obstacle.Point1.X, obstacle.Point2.X), std::min(obstacle.Point1.Y, obstacle.Point2.Y));
-				Vector2D bottomRight = Vector2D(std::max(obstacle.Point1.X, obstacle.Point2.X), std::max(obstacle.Point1.Y, obstacle.Point2.Y));
-				
-				// check if the particle is inside the obstacle
-				if (posX >= topLeft.X && posX <= bottomRight.X && posY >= topLeft.Y && posY <= bottomRight.Y) {
-					ok = false;
-					break;
+			for ( int obstacleIndex = 0; obstacleIndex < obstacles.size(); obstacleIndex+= 4) {
+
+				Vector2D topLeft = obstacles[obstacleIndex].Point1;
+				Vector2D bottomRight = obstacles[obstacleIndex].Point2;
+
+				for (int j = 0; j < 4; j++) {
+					auto& obstacle = obstacles[obstacleIndex + j];
+
+					// get the obstacles top left corner and bottom right corner
+					topLeft = Vector2D(std::min(topLeft.X, obstacle.Point2.X), std::min(topLeft.Y, obstacle.Point2.Y));
+					bottomRight = Vector2D(std::max(bottomRight.X, obstacle.Point2.X), std::max(bottomRight.Y, obstacle.Point2.Y));
+
+					// check if the particle is inside the obstacle
+					if (posX >= topLeft.X && posX <= bottomRight.X && posY >= topLeft.Y && posY <= bottomRight.Y) {
+						ok = false;
+						break;
+					}
 				}
 			}
 
@@ -89,7 +99,7 @@ Environment::Environment(int particleRadius, int particleRadiusOfRepel, float pa
 	int particleCount = Math::nextPowerOf2(m_Particles.size());
 
 	for (int i = m_Particles.size(); i < particleCount; i++) {
-		m_Particles.push_back(Particle());
+		m_Particles.push_back(Particle(count++));
 	}
 
 	m_Obstacles.push_back(Surface2D(0, 0, screenWidth, 0));

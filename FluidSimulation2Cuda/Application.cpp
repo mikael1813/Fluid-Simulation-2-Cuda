@@ -33,7 +33,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
-Environment* initializeEnvironment1(int screenWidth, int screenHeight) {
+Environment* initializeEnvironment0(int screenWidth, int screenHeight) {
+
+	int particleCount = 6000;
 
 	int particleRadius = 2;
 	int particleRadiusOfRepel = 50;
@@ -53,17 +55,137 @@ Environment* initializeEnvironment1(int screenWidth, int screenHeight) {
 
 	std::vector<Surface2D> obstacles;
 
-	obstacles.push_back(Surface2D(800, 200, 1000, 200));
-	obstacles.push_back(Surface2D(1000, 200, 1000, 600));
-	obstacles.push_back(Surface2D(1000, 600, 800, 600));
-	obstacles.push_back(Surface2D(800, 600, 800, 200));
+	std::vector<ConsumerPipe> consumers;
+	std::vector<GeneratorPipe> generators;
+
+	//environment = new Environment(obstacles, consumers, generators);
+
+	environment = new Environment(particleCount, particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
+		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators);
+
+	return environment;
+}
+
+Environment* initializeEnvironment1(int screenWidth, int screenHeight) {
+
+	int particleCount = 6000;
+
+	int particleRadius = 2;
+	int particleRadiusOfRepel = 50;
+
+	float particleRepulsionForce = 1.0f;
+
+	float viscosityStrength = 0.1f;
+
+	float how_far_into_the_future = 10.0f;
+
+	int thread_count = 4;
+
+	int interactionMatrixRows = screenHeight / particleRadiusOfRepel;
+	int interactionMatrixCols = screenWidth / particleRadiusOfRepel;
+
+	Environment* environment;
+
+	std::vector<Surface2D> obstacles;
+
+	obstacles.push_back(Surface2D(screenWidth * 2 / 4, 0, screenWidth * 3 / 4, 0));
+	obstacles.push_back(Surface2D(screenWidth * 3 / 4, 0, screenWidth * 3 / 4, screenHeight * 3 / 4));
+	obstacles.push_back(Surface2D(screenWidth * 3 / 4, screenHeight * 3 / 4, screenWidth * 2 / 4, screenHeight * 3 / 4));
+	obstacles.push_back(Surface2D(screenWidth * 2 / 4, screenHeight * 3 / 4, screenWidth * 2 / 4, 0));
 
 	std::vector<ConsumerPipe> consumers;
 	std::vector<GeneratorPipe> generators;
 
 	//environment = new Environment(obstacles, consumers, generators);
 
-	environment = new Environment(particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+	environment = new Environment(particleCount, particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
+		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators);
+
+	return environment;
+}
+
+Environment* initializeEnvironment2(int screenWidth, int screenHeight) {
+
+	int particleCount = 6000;
+
+	int particleRadius = 2;
+	int particleRadiusOfRepel = 50;
+
+	float particleRepulsionForce = 1.0f;
+
+	float viscosityStrength = 0.1f;
+
+	float how_far_into_the_future = 10.0f;
+
+	int thread_count = 4;
+
+	int interactionMatrixRows = screenHeight / particleRadiusOfRepel;
+	int interactionMatrixCols = screenWidth / particleRadiusOfRepel;
+
+	Environment* environment;
+
+	std::vector<Surface2D> obstacles;
+
+	obstacles.push_back(Surface2D(screenWidth * 2 / 4, 0, screenWidth * 3 / 4, 0));
+	obstacles.push_back(Surface2D(screenWidth * 3 / 4, 0, screenWidth * 3 / 4, screenHeight * 3 / 4));
+	obstacles.push_back(Surface2D(screenWidth * 3 / 4, screenHeight * 3 / 4, screenWidth * 2 / 4, screenHeight * 3 / 4));
+	obstacles.push_back(Surface2D(screenWidth * 2 / 4, screenHeight * 3 / 4, screenWidth * 2 / 4, 0));
+
+	std::vector<ConsumerPipe> consumers;
+
+	consumers.push_back(ConsumerPipe(Vector2D(screenWidth - 100, screenHeight - 100), 2));
+
+	std::vector<GeneratorPipe> generators;
+
+	//environment = new Environment(obstacles, consumers, generators);
+
+	environment = new Environment(particleCount, particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
+		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators);
+
+	return environment;
+}
+
+Environment* initializeEnvironment5(int screenWidth, int screenHeight) {
+
+	int particleCount = 5000;
+
+	int particleRadius = 2;
+	int particleRadiusOfRepel = 50;
+
+	float particleRepulsionForce = 1.0f;
+
+	float viscosityStrength = 0.1f;
+
+	float how_far_into_the_future = 10.0f;
+
+	int thread_count = 4;
+
+	int interactionMatrixRows = screenHeight / particleRadiusOfRepel;
+	int interactionMatrixCols = screenWidth / particleRadiusOfRepel;
+
+	Environment* environment;
+
+	std::vector<Surface2D> obstacles;
+
+	/*obstacles.push_back(Surface2D(800, 200, 1000, 200));
+	obstacles.push_back(Surface2D(1000, 200, 1000, 600));
+	obstacles.push_back(Surface2D(1000, 600, 800, 600));
+	obstacles.push_back(Surface2D(800, 600, 800, 200));*/
+
+	std::vector<ConsumerPipe> consumers;
+
+	//consumers.push_back(ConsumerPipe(Vector2D(100, screenHeight - 100), 2));
+
+	std::vector<GeneratorPipe> generators;
+
+	generators.push_back(GeneratorPipe(Vector2D(screenWidth - 100, 100), 2));
+
+	//environment = new Environment(obstacles, consumers, generators);
+
+	environment = new Environment(particleCount, particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
 		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
 		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators);
 
@@ -101,7 +223,7 @@ Application::Application()
 	// Set the key callback function
 	glfwSetKeyCallback(m_window, keyCallback);
 
-	m_environment = initializeEnvironment1(screenWidth, screenHeight);
+	m_environment = initializeEnvironment5(screenWidth, screenHeight);
 	globalEnvironment = m_environment;
 }
 

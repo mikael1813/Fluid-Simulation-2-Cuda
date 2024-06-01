@@ -10,7 +10,10 @@ constexpr float GRAVITY = 10.0f;
 
 class Particle {
 public:
-	Particle(){
+	Particle() {
+		m_Exists = false;
+	}
+	Particle(int id) : m_ID(id) {
 		m_Exists = false;
 	}
 	Particle(float x, float y, int id) : m_Position(Vector2D(x, y)), m_ID(id), m_TemporaryVelocity(Vector2D()) {
@@ -83,7 +86,7 @@ public:
 
 private:
 
-	
+
 
 	//std::vector<Vector2D> m_Forces;
 
