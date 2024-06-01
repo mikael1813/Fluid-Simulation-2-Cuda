@@ -28,6 +28,7 @@ public:
 	void moveDown();
 	void moveLeft();
 	void moveRight();
+	void turnGenerators();
 
 private:
 
@@ -39,6 +40,8 @@ private:
 	int m_ParticleRepulsionForce;
 	int m_InteractionMatrixRows;
 	int m_InteractionMatrixCols;
+
+	bool m_GeneratorsTurned = false;
 
 	std::vector<Particle> m_Particles;
 	std::vector<float> m_ParticleProperties;

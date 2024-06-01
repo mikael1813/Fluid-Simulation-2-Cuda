@@ -26,6 +26,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		//printf("D key pressed\n");
 		globalEnvironment->moveRight();
 	}
+	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+		globalEnvironment->turnGenerators();
+	}
 	// ... (similar checks for other keys as needed)
 }
 
@@ -174,6 +177,13 @@ Environment* initializeEnvironment5(int screenWidth, int screenHeight) {
 	obstacles.push_back(Surface2D(1000, 200, 1000, 600));
 	obstacles.push_back(Surface2D(1000, 600, 800, 600));
 	obstacles.push_back(Surface2D(800, 600, 800, 200));*/
+
+	obstacles.push_back(Surface2D(screenWidth - 150, 0, screenWidth - 150, 200));
+	obstacles.push_back(Surface2D(screenWidth - 150, 0, screenWidth - 150, 200));
+
+
+	obstacles.push_back(Surface2D(screenWidth - 150, 0, screenWidth - 150, 200));
+	obstacles.push_back(Surface2D(screenWidth - 50, 0, screenWidth - 50, 200));
 
 	std::vector<ConsumerPipe> consumers;
 

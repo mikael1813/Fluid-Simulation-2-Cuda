@@ -58,7 +58,7 @@ Environment::Environment(int tmp_particleCount, int particleRadius, int particle
 			posX = std::uniform_int_distribution<int>(100, screenWidth - 100)(gen);
 			posY = std::uniform_int_distribution<int>(100, screenHeight - 100)(gen);
 
-			for ( int obstacleIndex = 0; obstacleIndex < obstacles.size(); obstacleIndex+= 4) {
+			for (int obstacleIndex = 0; obstacleIndex < obstacles.size(); obstacleIndex += 4) {
 
 				Vector2D topLeft = obstacles[obstacleIndex].Point1;
 				Vector2D bottomRight = obstacles[obstacleIndex].Point2;
@@ -253,20 +253,35 @@ void Environment::newUpdate(float dt) {
 	averageDensity /= m_ParticleCount;*/
 	//printf("Average density: %f\n", averageDensity);
 
+	bool resizeNeeded = false;
+
 	GpuUpdateParticles(m_Particles, m_ParticleCount, m_ParticleRadiusOfRepel, m_ParticleRadius, m_ParticleRepulsionForce,
-				m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity);
+		m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity, m_GeneratorsTurned,
+		resizeNeeded);
+
+	if (resizeNeeded) {
+		int particleCount = Math::nextPowerOf2(m_Particles.size() + 1);
+
+		int count = m_Particles.size();
+
+		for (int i = m_Particles.size(); i < particleCount; i++) {
+			m_Particles.push_back(Particle(count++));
+		}
+
+		GpuReallocateParticles(m_Particles);
+	}
 
 	/*GpuUpdateParticles(m_Particles, m_ParticleCount, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
 		m_Obstacles, m_SolidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);*/
 
-	/*for (auto& pipe : m_Pipes) {
-		pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
-	}*/
+		/*for (auto& pipe : m_Pipes) {
+			pipe->update(dt, m_Particles, InteractionMatrixClass::getInstance()->getParticlesInCell(pipe->getPosition(), particleRadiusOfRepel), particleRadius * 2);
+		}*/
 
-	// update solid objects
-	/*for (auto& solidObject : m_SolidObjects) {
-		solidObject.update(dt);
-	}*/
+		// update solid objects
+		/*for (auto& solidObject : m_SolidObjects) {
+			solidObject.update(dt);
+		}*/
 
 	time2 = std::chrono::steady_clock::now();
 	tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
@@ -296,5 +311,9 @@ void Environment::moveRight()
 {
 	Vector2D force = Vector2D(100, 0);
 	m_ExternalForces.push_back(force);
+}
+
+void Environment::turnGenerators() {
+	m_GeneratorsTurned = !m_GeneratorsTurned;
 }
 

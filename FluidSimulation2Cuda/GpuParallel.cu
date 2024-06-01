@@ -1023,12 +1023,14 @@ void UpdatePipes(int particlesSize, int particleRadius) {
 void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, float averageDensity) {
+	size_t interactionMatrixCols, float averageDensity, bool generatorsTurned, bool& resizeNeeded) {
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
-	// Update pipes
-	UpdatePipes(particlesSize, particleRadius);
+	if (generatorsTurned) {
+		// Update pipes
+		UpdatePipes(particlesSize, particleRadius);
+	}
 
 	//Set number of threads and blocks for kernel calls
 	int threadsPerBlock = maxThreadsPerBlock;
@@ -1075,17 +1077,28 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 		}
 	}
 
-	SolidRectangle* solidObjectsOutput = new SolidRectangle[solidObjects.size()];
+	if (particlesSize + maxParticles >= particles.size()) {
+		resizeNeeded = true;
+	}
+
+	/*SolidRectangle* solidObjectsOutput = new SolidRectangle[solidObjects.size()];
 
 	cudaMemcpy(solidObjectsOutput, deviceSolidObjects, solidObjects.size() * sizeof(SolidRectangle), cudaMemcpyDeviceToHost);
 
 	for (int i = 0; i < solidObjects.size(); i++) {
 		solidObjects[i] = solidObjectsOutput[i];
-	}
+	}*/
 
 	// Free output
 	delete[] output;
-	delete[] solidObjectsOutput;
+	//delete[] solidObjectsOutput;
+}
+
+void GpuReallocateParticles(std::vector<Particle>& particles) {
+	cudaFree(deviceParticles);
+
+	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
+	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
 }
 
 __global__ void applyExternalForces(Particle* particles, Vector2D* externalForces) {
