@@ -10,7 +10,7 @@ constexpr float HOW_FAR_INTO_THE_FUTURE = 2.5f;
 
 constexpr int maxThreadsPerBlock = 512;
 
-constexpr float viscosityStrength = 0.1f;
+constexpr float viscosityStrength = 0.05f;
 
 constexpr float SURFACE_TENSION_STRENGTH = 50;
 

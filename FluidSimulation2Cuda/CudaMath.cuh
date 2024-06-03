@@ -181,7 +181,7 @@ namespace CudaMath {
 	__device__ float convertDensityToPressure(float density) {
 		//targetDensity = 0.8f;
 		//const float pressureConstant = 10.0f;
-		const float pressureConstant = 30.0f;
+		const float pressureConstant = 50.0f;
 
 		//float densityError = density <= targetDensity ? 0.0f : density - targetDensity;
 		float densityError = density - targetDensity;

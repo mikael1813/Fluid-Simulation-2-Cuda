@@ -258,6 +258,58 @@ Environment* initializeEnvironment10(int screenWidth, int screenHeight) {
 	return environment;
 }
 
+Environment* initializeEnvironment11(int screenWidth, int screenHeight) {
+
+	int particleCount = 2500;
+
+	int particleRadius = 2;
+	int particleRadiusOfRepel = 50;
+
+	float particleRepulsionForce = 1.0f;
+
+	float viscosityStrength = 0.1f;
+
+	float how_far_into_the_future = 10.0f;
+
+	int thread_count = 4;
+
+	int interactionMatrixRows = screenHeight / particleRadiusOfRepel;
+	int interactionMatrixCols = screenWidth / particleRadiusOfRepel;
+
+	Environment* environment;
+
+	std::vector<Surface2D> obstacles;
+
+	obstacles.push_back(Surface2D(400, 0, 500, 0));
+	obstacles.push_back(Surface2D(500, 0, 500, screenHeight / 3));
+	obstacles.push_back(Surface2D(500, screenHeight / 3, 400, screenHeight / 3));
+	obstacles.push_back(Surface2D(400, screenHeight / 3, 400, 0));
+
+	obstacles.push_back(Surface2D(400, 2 * screenHeight / 3, 500, 2 * screenHeight / 3));
+	obstacles.push_back(Surface2D(500, 2 * screenHeight / 3, 500, screenHeight));
+	obstacles.push_back(Surface2D(500, screenHeight, 400, screenHeight));
+	obstacles.push_back(Surface2D(400, screenHeight, 400, 2 * screenHeight / 3));
+
+	obstacles.push_back(Surface2D(400, screenHeight / 3, 500, screenHeight / 3));
+	obstacles.push_back(Surface2D(500, screenHeight / 3, 500, 2 * screenHeight / 3));
+	obstacles.push_back(Surface2D(500, 2 * screenHeight / 3, 400, 2 * screenHeight / 3));
+	obstacles.push_back(Surface2D(400, 2 * screenHeight / 3, 400, screenHeight / 3));
+
+	Surface2D spawnArea = Surface2D(Vector2D(100, 100), Vector2D(300, screenHeight - 100));
+
+	std::vector<ConsumerPipe> consumers;
+
+	std::vector<GeneratorPipe> generators;
+
+	//environment = new Environment(obstacles, consumers, generators);
+
+	environment = new Environment(particleCount, particleRadius, particleRadiusOfRepel, particleRepulsionForce, screenWidth,
+		screenHeight, viscosityStrength, how_far_into_the_future, thread_count,
+		interactionMatrixRows, interactionMatrixCols, obstacles, consumers, generators, spawnArea);
+
+	return environment;
+}
+
 Application::Application()
 {
 	// Initialize GLFW
@@ -289,7 +341,7 @@ Application::Application()
 	// Set the key callback function
 	glfwSetKeyCallback(m_window, keyCallback);
 
-	m_environment = initializeEnvironment10(screenWidth, screenHeight);
+	m_environment = initializeEnvironment0(screenWidth, screenHeight);
 	globalEnvironment = m_environment;
 }
 
