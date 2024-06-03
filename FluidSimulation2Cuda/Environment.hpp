@@ -16,7 +16,7 @@ public:
 	Environment(int particleCount, int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
 		int screenHeight, float viscosityStrength, float how_far_into_the_future, int thread_count,
 		int interactionMatrixRows, int interactionMatrixCols, std::vector<Surface2D> obstacles,
-		std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators);
+		std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators, Surface2D spawnArea);
 	~Environment();
 
 
@@ -29,6 +29,8 @@ public:
 	void moveLeft();
 	void moveRight();
 	void turnGenerators();
+	void turnSurfaceTension();
+	void deleteLastObstacle();
 
 private:
 
@@ -42,6 +44,7 @@ private:
 	int m_InteractionMatrixCols;
 
 	bool m_GeneratorsTurned = false;
+	bool m_ApplySurfaceTension = false;
 
 	std::vector<Particle> m_Particles;
 	std::vector<float> m_ParticleProperties;

@@ -220,9 +220,12 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-	float perfectDensity = averageDensity;
+	//float targetDensity = averageDensity;
+	float targetDensity = ::targetDensity/2;
 
-	float influence = CudaMath::surfaceTensionSmoothingKernel(particle.m_Density, averageDensity);
+	float perfectDensity = targetDensity;
+
+	float influence = CudaMath::surfaceTensionSmoothingKernel(particle.m_Density, targetDensity);
 
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
@@ -235,8 +238,8 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
 				Particle otherParticle = particles[otherParticleIndex];
 
-				if (abs(otherParticle.m_Density - averageDensity) < perfectDensity) {
-					perfectDensity = abs(otherParticle.m_Density - averageDensity);
+				if (abs(otherParticle.m_Density - targetDensity) < perfectDensity) {
+					perfectDensity = abs(otherParticle.m_Density - targetDensity);
 
 					float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
 
@@ -253,7 +256,7 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 
 __device__ void updateParticleFutureVelocities(int index, Particle* particles, int praticlesSize,
 	int particleRadiusOfRepel, int particleRadius, Range* lengths, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, double dt, float averageDensity)
+	size_t interactionMatrixCols, double dt, float averageDensity, bool applySurfaceTension)
 {
 
 	Particle particle = particles[index];
@@ -267,12 +270,12 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 
 	GpuVector2D surfaceTension = GpuVector2D();
 
-	//if (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5) {
-	//	surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-	//		lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
-	//	//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
-	//}
-	
+	if (applySurfaceTension && (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5)) {
+		surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+			lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
+		//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
+	}
+
 	GpuVector2D pressureAcceleration = pressureForce / particle.m_Density;
 
 	GpuVector2D viscosityForce = calculateViscosityForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
@@ -465,7 +468,7 @@ __global__ void specialUpdateDensities(Particle* particles, int praticlesSize, i
 
 __global__ void specialUpdateFutureVelocities(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
-	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt, float averageDensity) {
+	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt, float averageDensity, bool applySurfaceTension) {
 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -474,7 +477,7 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 	}
 
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
-		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt, averageDensity);
+		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt, averageDensity, applySurfaceTension);
 }
 
 __global__ void specialUpdateCollisionsBetweenParticlesAndObstacles(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
@@ -872,7 +875,7 @@ void GpuFree() {
 void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, float averageDensity) {
+	size_t interactionMatrixCols, float averageDensity, bool applySurfaceTension) {
 
 	int blockSize = (particlesSize < maxThreadsPerBlock) ? particlesSize : maxThreadsPerBlock;
 	int numBlocks = (particlesSize + blockSize - 1) / blockSize;
@@ -889,7 +892,7 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, 
 
 	specialUpdateFutureVelocities << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
-		interactionMatrixCols, deviceObstacles, obstacles.size(), dt, averageDensity);
+		interactionMatrixCols, deviceObstacles, obstacles.size(), dt, averageDensity, applySurfaceTension);
 
 	cudaDeviceSynchronize();
 
@@ -1023,7 +1026,8 @@ void UpdatePipes(int particlesSize, int particleRadius) {
 void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, float averageDensity, bool generatorsTurned, bool& resizeNeeded) {
+	size_t interactionMatrixCols, float averageDensity, bool generatorsTurned, bool& resizeNeeded,
+	bool applySurfaceTension) {
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
@@ -1062,7 +1066,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 
 	// Launch CUDA kernel for updating particles
 	UpdateParticlesHelper(particles, particlesSize, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
-		obstacles, solidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity);
+		obstacles, solidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity, applySurfaceTension);
 
 	Particle* output = new Particle[particles.size()];
 
@@ -1099,6 +1103,13 @@ void GpuReallocateParticles(std::vector<Particle>& particles) {
 
 	cudaMalloc(&deviceParticles, particles.size() * sizeof(Particle));
 	cudaMemcpy(deviceParticles, particles.data(), particles.size() * sizeof(Particle), cudaMemcpyHostToDevice);
+}
+
+void GpuReallocateObstacles(std::vector<Surface2D>& obstacles) {
+	cudaFree(deviceObstacles);
+
+	cudaMalloc(&deviceObstacles, obstacles.size() * sizeof(Surface2D));
+	cudaMemcpy(deviceObstacles, obstacles.data(), obstacles.size() * sizeof(Surface2D), cudaMemcpyHostToDevice);
 }
 
 __global__ void applyExternalForces(Particle* particles, Vector2D* externalForces) {

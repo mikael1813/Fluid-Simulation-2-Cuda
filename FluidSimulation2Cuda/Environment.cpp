@@ -27,7 +27,7 @@ float ExampleFunction(Vector2D point) {
 Environment::Environment(int tmp_particleCount, int particleRadius, int particleRadiusOfRepel, float particleRepulsionForce, int screenWidth,
 	int screenHeight, float viscosityStrength, float how_far_into_the_future, int thread_count,
 	int interactionMatrixRows, int interactionMatrixCols, std::vector<Surface2D> obstacles,
-	std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators) {
+	std::vector<ConsumerPipe> consumers, std::vector<GeneratorPipe> generators, Surface2D spawnArea) {
 
 	m_ParticleCount = tmp_particleCount;
 
@@ -57,6 +57,11 @@ Environment::Environment(int tmp_particleCount, int particleRadius, int particle
 
 			posX = std::uniform_int_distribution<int>(100, screenWidth - 100)(gen);
 			posY = std::uniform_int_distribution<int>(100, screenHeight - 100)(gen);
+
+			if (posX < spawnArea.Point1.X || posX > spawnArea.Point2.X || posY < spawnArea.Point1.Y || posY > spawnArea.Point2.Y) {
+				ok = false;
+				continue;
+			}
 
 			for (int obstacleIndex = 0; obstacleIndex < obstacles.size(); obstacleIndex += 4) {
 
@@ -247,17 +252,17 @@ void Environment::newUpdate(float dt) {
 
 
 	float averageDensity = 0.0f;
-	/*for(int i = 0; i < m_ParticleCount; i++) {
+	for (int i = 0; i < m_ParticleCount; i++) {
 		averageDensity += m_Particles[i].m_Density;
 	}
-	averageDensity /= m_ParticleCount;*/
+	averageDensity /= m_ParticleCount;
 	//printf("Average density: %f\n", averageDensity);
 
 	bool resizeNeeded = false;
 
 	GpuUpdateParticles(m_Particles, m_ParticleCount, m_ParticleRadiusOfRepel, m_ParticleRadius, m_ParticleRepulsionForce,
 		m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity, m_GeneratorsTurned,
-		resizeNeeded);
+		resizeNeeded, m_ApplySurfaceTension);
 
 	if (resizeNeeded) {
 		int particleCount = Math::nextPowerOf2(m_Particles.size() + 1);
@@ -317,3 +322,14 @@ void Environment::turnGenerators() {
 	m_GeneratorsTurned = !m_GeneratorsTurned;
 }
 
+void Environment::turnSurfaceTension() {
+	m_ApplySurfaceTension = !m_ApplySurfaceTension;
+	printf("Surface tension: %s\n", m_ApplySurfaceTension ? "ON" : "OFF");
+}
+
+void Environment::deleteLastObstacle() {
+	for (int i = 0; i < 4; i++) {
+		m_Obstacles.pop_back();
+	}
+	GpuReallocateObstacles(m_Obstacles);
+}
