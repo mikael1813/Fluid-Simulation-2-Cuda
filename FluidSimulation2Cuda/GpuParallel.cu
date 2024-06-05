@@ -92,8 +92,15 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
+	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
+
+	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
+
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
+			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
+				continue;
+			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -143,8 +150,15 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 
 	GpuVector2D pressureForce = GpuVector2D();
 
+	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
+
+	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
+
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
+			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
+				continue;
+			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -187,8 +201,15 @@ __device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, i
 	int col = point.X / particleRadiusOfRepel;
 
 
+	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
+
+	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
+
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
+			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
+				continue;
+			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -221,14 +242,21 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 	int col = point.X / particleRadiusOfRepel;
 
 	//float targetDensity = averageDensity;
-	float targetDensity = ::targetDensity/2;
+	float targetDensity = ::targetDensity / 2;
 
 	float perfectDensity = targetDensity;
 
 	float influence = CudaMath::surfaceTensionSmoothingKernel(particle.m_Density, targetDensity);
 
+	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
+
+	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
+
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
+			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
+				continue;
+			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -349,8 +377,15 @@ __device__ void updateCollisionsBetweenParticlesAndParticles(int index, Particle
 	int col = point.X / particleRadiusOfRepel;
 
 
+	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
+
+	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
+
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
+			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
+				continue;
+			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -478,7 +513,7 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 	}
 
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
-		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt, averageDensity, 
+		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt, averageDensity,
 		applySurfaceTension, viscosityStrength);
 }
 

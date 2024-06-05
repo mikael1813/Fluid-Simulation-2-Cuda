@@ -145,6 +145,34 @@ namespace CudaMath {
 		return dist_CP_squared <= radius * radius;
 	}
 
+	__device__ GpuVector2D isPointFartherThanSideFromCorner(Vector2D point, GpuVector2D bottomLeftCorner, float sideLength) {
+		// Coordinates of the corners of the square
+		GpuVector2D bottomRightCorner = { bottomLeftCorner.X + sideLength, bottomLeftCorner.Y };
+		GpuVector2D topLeftCorner = { bottomLeftCorner.X, bottomLeftCorner.Y + sideLength };
+		GpuVector2D topRightCorner = { bottomLeftCorner.X + sideLength, bottomLeftCorner.Y + sideLength };
+
+		// Calculate the distances from the point to each corner
+		float distanceToBottomLeft = sqrt(pow(point.X - bottomLeftCorner.X, 2) + pow(point.Y - bottomLeftCorner.Y, 2));
+		float distanceToBottomRight = sqrt(pow(point.X - bottomRightCorner.X, 2) + pow(point.Y - bottomRightCorner.Y, 2));
+		float distanceToTopLeft = sqrt(pow(point.X - topLeftCorner.X, 2) + pow(point.Y - topLeftCorner.Y, 2));
+		float distanceToTopRight = sqrt(pow(point.X - topRightCorner.X, 2) + pow(point.Y - topRightCorner.Y, 2));
+
+		if (distanceToBottomLeft > sideLength) {
+			return GpuVector2D(1, -1);
+		}
+		else if (distanceToBottomRight > sideLength) {
+			return GpuVector2D(1, 1);
+		}
+		else if (distanceToTopLeft > sideLength) {
+			return GpuVector2D(-1, -1);
+		}
+		else if (distanceToTopRight > sideLength) {
+			return GpuVector2D(-1, 1);
+		}
+
+		return GpuVector2D(100, 100);
+	}
+
 	__device__ float smoothingKernel(float radius, float distance) {
 		if (distance >= radius) {
 			return 0.0f;
@@ -191,7 +219,7 @@ namespace CudaMath {
 	}
 
 	__device__ float convertDensitiesToArhimedeInfluence(float objectDensity, float particlesSurroundingDensity) {
-		return - particlesSurroundingDensity / objectDensity;
+		return -particlesSurroundingDensity / objectDensity;
 	}
 
 	__device__ float calculateSharedPressure(float density1, float density2) {
