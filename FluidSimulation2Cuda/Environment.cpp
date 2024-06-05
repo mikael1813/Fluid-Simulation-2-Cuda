@@ -37,6 +37,8 @@ Environment::Environment(int tmp_particleCount, int particleRadius, int particle
 	m_InteractionMatrixRows = interactionMatrixRows;
 	m_InteractionMatrixCols = interactionMatrixCols;
 
+	m_ViscosityStrength = viscosityStrength;
+
 	InteractionMatrixClass::getInstance()->initializeMatrix(screenWidth, screenHeight, particleRadiusOfRepel);
 
 	m_Particles = std::vector<Particle>{};
@@ -58,7 +60,11 @@ Environment::Environment(int tmp_particleCount, int particleRadius, int particle
 			posX = std::uniform_int_distribution<int>(100, screenWidth - 100)(gen);
 			posY = std::uniform_int_distribution<int>(100, screenHeight - 100)(gen);
 
-			if (!((posX > spawnArea.Point1.X && posX < spawnArea.Point2.X) && (posY > spawnArea.Point1.Y && posY < spawnArea.Point2.Y))) {
+			// check if spawn area is not empty
+
+
+			if ( !(spawnArea.Point1.X == 0 && spawnArea.Point1.Y == 0 && spawnArea.Point2.X == 0 && spawnArea.Point2.Y == 0) &&
+				!((posX > spawnArea.Point1.X && posX < spawnArea.Point2.X) && (posY > spawnArea.Point1.Y && posY < spawnArea.Point2.Y))) {
 				ok = false;
 				continue;
 			}
@@ -262,7 +268,7 @@ void Environment::newUpdate(float dt) {
 
 	GpuUpdateParticles(m_Particles, m_ParticleCount, m_ParticleRadiusOfRepel, m_ParticleRadius, m_ParticleRepulsionForce,
 		m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity, m_GeneratorsTurned,
-		resizeNeeded, m_ApplySurfaceTension);
+		resizeNeeded, m_ApplySurfaceTension, m_ViscosityStrength);
 
 	if (resizeNeeded) {
 		int particleCount = Math::nextPowerOf2(m_Particles.size() + 1);

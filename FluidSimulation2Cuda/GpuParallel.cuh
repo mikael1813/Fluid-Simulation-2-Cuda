@@ -24,7 +24,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
 	size_t interactionMatrixCols, float averageDensity, bool generatorsTurned, bool& resizeNeeded,
-	bool applySurfaceTension);
+	bool applySurfaceTension, float viscosityStrength);
 
 void GpuAllocateInteractionMatrix(InteractionMatrixClass* interactionMatrix);
 

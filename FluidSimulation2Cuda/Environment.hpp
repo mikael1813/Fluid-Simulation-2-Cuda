@@ -43,6 +43,8 @@ private:
 	int m_InteractionMatrixRows;
 	int m_InteractionMatrixCols;
 
+	float m_ViscosityStrength;
+
 	bool m_GeneratorsTurned = false;
 	bool m_ApplySurfaceTension = false;
 

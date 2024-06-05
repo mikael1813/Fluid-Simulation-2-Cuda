@@ -51,7 +51,7 @@ Environment* initializeEnvironment0(int screenWidth, int screenHeight) {
 
 	float particleRepulsionForce = 1.0f;
 
-	float viscosityStrength = 0.1f;
+	float viscosityStrength = 0.05f;
 
 	float how_far_into_the_future = 10.0f;
 
@@ -341,7 +341,7 @@ Application::Application()
 	// Set the key callback function
 	glfwSetKeyCallback(m_window, keyCallback);
 
-	m_environment = initializeEnvironment10(screenWidth, screenHeight);
+	m_environment = initializeEnvironment0(screenWidth, screenHeight);
 	globalEnvironment = m_environment;
 }
 
