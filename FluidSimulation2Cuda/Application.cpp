@@ -341,7 +341,7 @@ Application::Application()
 	// Set the key callback function
 	glfwSetKeyCallback(m_window, keyCallback);
 
-	m_environment = initializeEnvironment0(screenWidth, screenHeight);
+	m_environment = initializeEnvironment10(screenWidth, screenHeight);
 	globalEnvironment = m_environment;
 }
 

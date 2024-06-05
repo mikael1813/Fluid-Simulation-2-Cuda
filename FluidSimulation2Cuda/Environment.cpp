@@ -58,7 +58,7 @@ Environment::Environment(int tmp_particleCount, int particleRadius, int particle
 			posX = std::uniform_int_distribution<int>(100, screenWidth - 100)(gen);
 			posY = std::uniform_int_distribution<int>(100, screenHeight - 100)(gen);
 
-			if ((posX > spawnArea.Point1.X && posY > spawnArea.Point1.Y) && (posX < spawnArea.Point2.X || posY < spawnArea.Point2.Y)) {
+			if (!((posX > spawnArea.Point1.X && posX < spawnArea.Point2.X) && (posY > spawnArea.Point1.Y && posY < spawnArea.Point2.Y))) {
 				ok = false;
 				continue;
 			}
