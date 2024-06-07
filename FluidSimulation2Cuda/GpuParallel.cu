@@ -92,15 +92,9 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
-
-	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
-
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
-			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
-				continue;
-			}
+			
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -114,7 +108,9 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 				}
 				float distance = sqrt(CudaMath::squared_distance(point, otherParticle.m_PredictedPosition));
 
-
+				if (distance > particleRadiusOfRepel) {
+					continue;
+				}
 
 				float influence = CudaMath::smoothingKernel(particleRadiusOfRepel, distance);
 				density += otherParticle.m_Mass * influence;
@@ -126,15 +122,11 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 	float volume = 3.1415f * pow(particleRadiusOfRepel, 2);
 
 	if (density == 0) {
-		//printf("densityyyyyyy1: %f, index: %d\n", density, index);
 		density = particle.m_Mass * CudaMath::smoothingKernel(particleRadiusOfRepel, 0);
 	}
 
 	density = density / volume * scalar;
 
-	/*if (density == 0) {
-		printf("densityyyyyyy: %f, index: %d\n", density, index);
-	}*/
 
 	particles[index].m_Density = density;
 }
@@ -150,18 +142,10 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-
 	GpuVector2D pressureForce = GpuVector2D();
-
-	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
-
-	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
 
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
-			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
-				continue;
-			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -176,6 +160,10 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 				}
 
 				float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
+
+				if (distance > particleRadiusOfRepel) {
+					continue;
+				}
 
 				GpuVector2D dir = distance < particleRadius ? GpuVector2D::getRandomDirection() : (GpuVector2D(otherParticle.m_PredictedPosition) - GpuVector2D(particle.m_PredictedPosition)) / distance;
 
@@ -203,16 +191,8 @@ __device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, i
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-
-	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
-
-	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
-
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
-			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
-				continue;
-			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -222,6 +202,10 @@ __device__ GpuVector2D calculateViscosityForce(int index, Particle* particles, i
 			for (int otherParticleIndex = lengths[lengthIndex].start; otherParticleIndex < lengths[lengthIndex].end; otherParticleIndex++) {
 				Particle otherParticle = particles[otherParticleIndex];
 				float distance = sqrt(CudaMath::squared_distance(point, otherParticle.m_PredictedPosition));
+
+				if (distance > particleRadiusOfRepel) {
+					continue;
+				}
 
 				float influence = CudaMath::viscositySmoothingKernel(particleRadiusOfRepel, distance);
 
@@ -251,15 +235,8 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 
 	float influence = CudaMath::surfaceTensionSmoothingKernel(particle.m_Density, targetDensity);
 
-	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
-
-	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
-
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
-			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
-				continue;
-			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
@@ -274,6 +251,10 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 
 					float distance = sqrt(CudaMath::squared_distance(particle.m_PredictedPosition, otherParticle.m_PredictedPosition));
 
+					if (distance > particleRadiusOfRepel) {
+						continue;
+					}
+					
 					GpuVector2D dir = distance < particleRadius ? GpuVector2D::getRandomDirection() : (GpuVector2D(otherParticle.m_PredictedPosition) - GpuVector2D(particle.m_PredictedPosition)) / distance;
 
 					surfaceTension = dir * influence * SURFACE_TENSION_STRENGTH;
@@ -379,17 +360,8 @@ __device__ void updateCollisionsBetweenParticlesAndParticles(int index, Particle
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-	//GpuVector2D squareToAvoid = GpuVector2D(100, 100);
-
-	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
-
-	GpuVector2D squareToAvoid = CudaMath::isPointFartherThanSideFromCorner(point, bottomLeftCorner, particleRadiusOfRepel);
-
 	for (int i = -1; i < 2; i++) {
 		for (int j = -1; j < 2; j++) {
-			if (squareToAvoid.X == i && squareToAvoid.Y == j) {
-				continue;
-			}
 			if (row + i < 0 || row + i >= interactionMatrixRows || col + j < 0 || col + j >= interactionMatrixCols) {
 				continue;
 			}
