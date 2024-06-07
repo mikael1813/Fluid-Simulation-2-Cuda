@@ -241,6 +241,28 @@ void Environment::render(int width, int height)
 //	return rowA < rowB;
 //}
 
+// Function to calculate distance between point and line
+double distancePointToLine1(const Vector2D& point, const Vector2D& linePoint1, const Vector2D& linePoint2) {
+	// Calculate the direction vector of the line
+	Vector2D lineDirection = linePoint2 - linePoint1;
+
+	// Calculate the vector from linePoint1 to the point
+	Vector2D pointVec = point - linePoint1;
+
+	// Project the point vector onto the line direction vector
+	double projection = (pointVec.X * lineDirection.X + pointVec.Y * lineDirection.Y) /
+		(lineDirection.X * lineDirection.X + lineDirection.Y * lineDirection.Y);
+
+	// Clamp the projection to the line segment (avoid going outside the line segment)
+	projection = std::fmax(std::fmin(projection, 1.0), 0.0);
+
+	// Closest point on the line to the point
+	Vector2D closestPoint = linePoint1 + projection * lineDirection;
+
+	// Calculate distance between point and closest point on the line
+	return sqrt(std::pow(point.X - closestPoint.X, 2) + std::pow(point.Y - closestPoint.Y, 2));
+}
+
 void Environment::newUpdate(float dt) {
 
 	std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
@@ -260,6 +282,14 @@ void Environment::newUpdate(float dt) {
 	float averageDensity = 0.0f;
 	for (int i = 0; i < m_ParticleCount; i++) {
 		averageDensity += m_Particles[i].m_Density;
+		if (m_Particles[i].m_Position.Y > 895) {
+			int x = 0;
+		}
+		auto particle = m_Particles[i];
+		auto distance = distancePointToLine1(m_Particles[i].m_Position, m_Obstacles[2].Point1, m_Obstacles[2].Point2);
+		if (distance < m_ParticleRadius*2){
+			int x = 0;
+		}
 	}
 	averageDensity /= m_ParticleCount;
 	//printf("Average density: %f\n", averageDensity);

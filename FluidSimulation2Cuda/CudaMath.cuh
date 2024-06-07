@@ -47,6 +47,16 @@ struct GpuVector2D {
 		return direction;
 	}
 
+	// Helper function for Vector2D class (assuming a dot product function exists)
+	__device__ double dot(const GpuVector2D& other) {
+		return X * other.X + Y * other.X;
+	}
+
+	// Helper function for Vector2D class (assuming a distance function exists)
+	__device__ double distanceTo(const GpuVector2D& other) {
+		return sqrt(std::pow(X - other.X, 2) + std::pow(Y - other.Y, 2));
+	}
+
 	// add 2 vectors
 	__device__ GpuVector2D operator+(const GpuVector2D& other) const {
 		return GpuVector2D(X + other.X, Y + other.Y);
@@ -241,6 +251,35 @@ namespace CudaMath {
 		int val = (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y);
 		if (val == 0) return 0; // colinear
 		return (val > 0) ? 1 : 2; // clock or counterclock wise
+	}
+
+	// Function to calculate distance between point and line
+	__device__ double distancePointToLine(const Vector2D& point, const Vector2D& linePoint1, const Vector2D& linePoint2) {
+
+		// Convert the input point to GpuVector2D
+		GpuVector2D pointGpu = { point.X, point.Y };
+
+		// Convert the input points to GpuVector2D
+		GpuVector2D linePoint1Gpu = { linePoint1.X, linePoint1.Y };
+		GpuVector2D linePoint2Gpu = { linePoint2.X, linePoint2.Y };
+
+		// Calculate the direction vector of the line
+		GpuVector2D lineDirection = linePoint2Gpu - linePoint1Gpu;
+
+		// Calculate the vector from linePoint1 to the point
+		GpuVector2D pointVec = pointGpu - linePoint1Gpu;
+
+		// Project the point vector onto the line direction vector
+		double projection = pointVec.dot(lineDirection) / lineDirection.dot(lineDirection);
+
+		// Clamp the projection to the line segment (avoid going outside the line segment)
+		projection = std::fmax(std::fmin(projection, 1.0), 0.0);
+
+		// Closest point on the line to the point
+		GpuVector2D closestPoint = linePoint1Gpu + projection * lineDirection;
+
+		// Calculate distance between point and closest point on the line
+		return pointVec.distanceTo(closestPoint);
 	}
 
 	// Function to check if the segment 'p1q1' and 'p2q2' intersect
