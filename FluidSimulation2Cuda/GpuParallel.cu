@@ -113,6 +113,9 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 					continue;
 				}
 				float distance = sqrt(CudaMath::squared_distance(point, otherParticle.m_PredictedPosition));
+
+
+
 				float influence = CudaMath::smoothingKernel(particleRadiusOfRepel, distance);
 				density += otherParticle.m_Mass * influence;
 			}
@@ -376,6 +379,7 @@ __device__ void updateCollisionsBetweenParticlesAndParticles(int index, Particle
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
+	//GpuVector2D squareToAvoid = GpuVector2D(100, 100);
 
 	GpuVector2D bottomLeftCorner = GpuVector2D(col * particleRadiusOfRepel, (row + 1) * particleRadiusOfRepel);
 
