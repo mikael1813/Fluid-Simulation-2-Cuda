@@ -298,7 +298,7 @@ void Environment::newUpdate(float dt) {
 
 	GpuUpdateParticles(m_Particles, m_ParticleCount, m_ParticleRadiusOfRepel, m_ParticleRadius, m_ParticleRepulsionForce,
 		m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity, m_GeneratorsTurned,
-		resizeNeeded, m_ApplySurfaceTension, m_ViscosityStrength);
+		resizeNeeded, m_ApplySurfaceTension, m_ViscosityStrength, m_TargetDensity, m_PressureCoefficient, m_Gravity);
 
 	if (resizeNeeded) {
 		int particleCount = Math::nextPowerOf2(m_Particles.size() + 1);
@@ -368,4 +368,21 @@ void Environment::deleteLastObstacle() {
 		m_Obstacles.pop_back();
 	}
 	GpuReallocateObstacles(m_Obstacles);
+}
+
+void Environment::updatePressureCoefficient(float pressureCoefficient)
+{
+	this->m_PressureCoefficient = pressureCoefficient;
+}
+
+void Environment::updateGravity(float gravity) {
+	m_Gravity = gravity;
+}
+
+void Environment::updateTargetDensity(float targetDensity) {
+	m_TargetDensity = targetDensity;
+}
+
+void Environment::updateViscosity(float viscosity) {
+	m_ViscosityStrength = viscosity;
 }

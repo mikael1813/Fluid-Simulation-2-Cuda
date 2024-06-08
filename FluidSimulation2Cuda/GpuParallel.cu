@@ -55,7 +55,7 @@ __device__ int counterDensitiesDone = 0;
 __device__ int counterPredictedPositionsDone = 0;
 __device__ int counterFutureVelocitiesDone = 0;
 
-__device__ void updateParticle(int index, Particle* particle, double dt) {
+__device__ void updateParticle(int index, Particle* particle, float gravity, double dt) {
 	if (dt == 0) {
 		return;
 	}
@@ -67,7 +67,7 @@ __device__ void updateParticle(int index, Particle* particle, double dt) {
 
 	GpuVector2D newVelocity{ 0,0 };
 
-	newVelocity = GpuVector2D(particle[index].m_Velocity) + GpuVector2D(0.0f, GRAVITY) * dt;
+	newVelocity = GpuVector2D(particle[index].m_Velocity) + GpuVector2D(0.0f, gravity) * dt;
 
 	newVelocity += GpuVector2D(particle[index].m_TemporaryVelocity);
 
@@ -136,7 +136,8 @@ __device__ void updateParticleDensities(int index, Particle* particles, int prat
 }
 
 __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, int praticlesSize, int particleRadiusOfRepel,
-	int particleRadius, Range* lengths, int interactionMatrixRows, int interactionMatrixCols)
+	int particleRadius, Range* lengths, int interactionMatrixRows, int interactionMatrixCols,
+	float targetDensity, float pressureCoeficient)
 {
 
 	Particle particle = particles[index];
@@ -173,7 +174,7 @@ __device__ GpuVector2D calculatePressureForce(int index, Particle* particles, in
 
 				float slope = CudaMath::smoothingKernelDerivative(particleRadiusOfRepel, distance);
 
-				float sharedPressure = CudaMath::calculateSharedPressure(particle.m_Density, otherParticle.m_Density);
+				float sharedPressure = CudaMath::calculateSharedPressure(particle.m_Density, otherParticle.m_Density, targetDensity, pressureCoeficient);
 
 				pressureForce += -sharedPressure * dir * slope * otherParticle.m_Mass /*/ density*/;
 			}
@@ -232,10 +233,10 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 	int row = point.Y / particleRadiusOfRepel;
 	int col = point.X / particleRadiusOfRepel;
 
-	//float targetDensity = averageDensity;
-	float targetDensity = ::targetDensity / 2;
+	float targetDensity = averageDensity;
+	//float targetDensity = ::targetDensity / 2;
 
-	float perfectDensity = targetDensity;
+	float perfectDensity = 0;
 
 	float influence = CudaMath::surfaceTensionSmoothingKernel(particle.m_Density, targetDensity);
 
@@ -272,7 +273,8 @@ __device__ GpuVector2D calculateSurfaceTensionForce(int index, Particle* particl
 
 __device__ void updateParticleFutureVelocities(int index, Particle* particles, int praticlesSize,
 	int particleRadiusOfRepel, int particleRadius, Range* lengths, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, double dt, float averageDensity, bool applySurfaceTension, float viscosityStrength)
+	size_t interactionMatrixCols, double dt, float averageDensity, bool applySurfaceTension, float viscosityStrength,
+	float targetDensity, float pressureCoeficient, float gravity)
 {
 
 	Particle particle = particles[index];
@@ -282,15 +284,15 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 	}
 
 	GpuVector2D pressureForce = calculatePressureForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-		lengths, interactionMatrixRows, interactionMatrixCols);
+		lengths, interactionMatrixRows, interactionMatrixCols, targetDensity, pressureCoeficient);
 
 	GpuVector2D surfaceTension = GpuVector2D();
 
-	if (applySurfaceTension && (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5)) {
-		surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
-			lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
-		//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
-	}
+	//if (applySurfaceTension && (particle.m_Density < targetDensity * 4 / 5 || particle.m_Density > targetDensity * 6 / 5)) {
+	//	surfaceTension = calculateSurfaceTensionForce(index, particles, praticlesSize, particleRadiusOfRepel, particleRadius,
+	//		lengths, interactionMatrixRows, interactionMatrixCols, averageDensity);
+	//	//printf("index: %d, surfaceTension: %f %f \n", index, surfaceTension.X, surfaceTension.Y);
+	//}
 
 	GpuVector2D pressureAcceleration = pressureForce / particle.m_Density;
 
@@ -307,7 +309,7 @@ __device__ void updateParticleFutureVelocities(int index, Particle* particles, i
 
 
 	particles[index].m_Velocity = particles[index].m_FutureVelocity;
-	updateParticle(index, particles, dt);
+	updateParticle(index, particles, gravity, dt);
 	particles[index].m_PredictedPosition = particles[index].m_Position;
 }
 
@@ -506,7 +508,7 @@ __global__ void specialUpdateDensities(Particle* particles, int praticlesSize, i
 __global__ void specialUpdateFutureVelocities(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, Range* lengths, int interactionMatrixRows,
 	int interactionMatrixCols, Surface2D* obstacles, int obstaclesSize, double dt, float averageDensity, bool applySurfaceTension,
-	float viscosityStrength) {
+	float viscosityStrength, float targetDensity, float pressureCoeficient, float gravity) {
 
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -516,7 +518,7 @@ __global__ void specialUpdateFutureVelocities(Particle* particles, int praticles
 
 	updateParticleFutureVelocities(index, particles, praticlesSize, particleRadiusOfRepel,
 		particleRadius, lengths, interactionMatrixRows, interactionMatrixCols, dt, averageDensity,
-		applySurfaceTension, viscosityStrength);
+		applySurfaceTension, viscosityStrength, targetDensity, pressureCoeficient, gravity);
 }
 
 __global__ void specialUpdateCollisionsBetweenParticlesAndObstacles(Particle* particles, int praticlesSize, int particleRadiusOfRepel,
@@ -917,7 +919,8 @@ void GpuFree() {
 void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, int particleRadiusOfRepel,
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
-	size_t interactionMatrixCols, float averageDensity, bool applySurfaceTension, float viscosityStrength) {
+	size_t interactionMatrixCols, float averageDensity, bool applySurfaceTension, float viscosityStrength,
+	float targetDensity, float pressureCoeficient, float gravity) {
 
 	int blockSize = (particlesSize < maxThreadsPerBlock) ? particlesSize : maxThreadsPerBlock;
 	int numBlocks = (particlesSize + blockSize - 1) / blockSize;
@@ -936,7 +939,8 @@ void UpdateParticlesHelper(std::vector<Particle>& particles, int particlesSize, 
 
 	specialUpdateFutureVelocities << <numBlocks, blockSize >> > (deviceParticles, particlesSize, particleRadiusOfRepel,
 		particleRadius, particleRepulsionForce, lengths, interactionMatrixRows,
-		interactionMatrixCols, deviceObstacles, obstacles.size(), dt, averageDensity, applySurfaceTension, viscosityStrength);
+		interactionMatrixCols, deviceObstacles, obstacles.size(), dt, averageDensity, applySurfaceTension, viscosityStrength,
+		targetDensity, pressureCoeficient, gravity);
 
 	cudaDeviceSynchronize();
 
@@ -1074,7 +1078,8 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 	int particleRadius, float particleRepulsionForce, std::vector<Surface2D>& obstacles,
 	std::vector<SolidRectangle>& solidObjects, double dt, size_t interactionMatrixRows,
 	size_t interactionMatrixCols, float averageDensity, bool generatorsTurned, bool& resizeNeeded,
-	bool applySurfaceTension, float viscosityStrength) {
+	bool applySurfaceTension, float viscosityStrength, float targetDensity, float pressureCoeficient,
+	float gravity) {
 
 	interactionMatrixSize = interactionMatrixRows * interactionMatrixCols;
 
@@ -1114,7 +1119,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 	// Launch CUDA kernel for updating particles
 	UpdateParticlesHelper(particles, particlesSize, particleRadiusOfRepel, particleRadius, particleRepulsionForce,
 		obstacles, solidObjects, dt, interactionMatrixRows, interactionMatrixCols, averageDensity, applySurfaceTension,
-		viscosityStrength);
+		viscosityStrength, targetDensity, pressureCoeficient, gravity);
 
 	Particle* output = new Particle[particles.size()];
 

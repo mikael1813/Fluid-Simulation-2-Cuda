@@ -1,6 +1,6 @@
 #include "Phisics.hpp"
 
-constexpr float targetDensity = 0.8f;
+//constexpr float targetDensity = 0.8f;
 
 struct GpuVector2D {
 
@@ -216,15 +216,15 @@ namespace CudaMath {
 		return x * x;
 	}
 
-	__device__ float convertDensityToPressure(float density) {
+	__device__ float convertDensityToPressure(float density, float targetDensity, float pressureCoeficient) {
 		//targetDensity = 0.8f;
 		//const float pressureConstant = 10.0f;
-		const float pressureConstant = 50.0f;
+		//const float pressureConstant = 50.0f;
 
 		//float densityError = density <= targetDensity ? 0.0f : density - targetDensity;
 		float densityError = density - targetDensity;
 
-		float pressure = pressureConstant * densityError;
+		float pressure = pressureCoeficient * densityError;
 		return pressure;
 	}
 
@@ -232,9 +232,9 @@ namespace CudaMath {
 		return -particlesSurroundingDensity / objectDensity;
 	}
 
-	__device__ float calculateSharedPressure(float density1, float density2) {
-		float pressure1 = convertDensityToPressure(density1);
-		float pressure2 = convertDensityToPressure(density2);
+	__device__ float calculateSharedPressure(float density1, float density2, float targetDensity, float pressureCoeficient) {
+		float pressure1 = convertDensityToPressure(density1, targetDensity, pressureCoeficient);
+		float pressure2 = convertDensityToPressure(density2, targetDensity, pressureCoeficient);
 		return (pressure1 + pressure2) / 2;
 	}
 

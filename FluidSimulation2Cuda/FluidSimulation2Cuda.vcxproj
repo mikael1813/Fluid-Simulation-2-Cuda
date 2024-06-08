@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Environment.cpp" />
+    <ClCompile Include="GUIApplication.cpp" />
     <ClCompile Include="InteractionMatrixClass.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Phisics.cpp" />
@@ -25,6 +26,7 @@
     <ClInclude Include="Environment.hpp" />
     <ClInclude Include="GpuParallel.cuh" />
     <ClInclude Include="Graphics.hpp" />
+    <ClInclude Include="GUIApplication.hpp" />
     <ClInclude Include="InteractionMatrixClass.hpp" />
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="Phisics.hpp" />
@@ -68,6 +70,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(ProjectDir)\SDL2-2.28.5\include;$(ProjectDir)\SDL2_ttf-2.22.0\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)\SDL2-2.28.5\lib\x64;$(ProjectDir)\SDL2_ttf-2.22.0\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -79,7 +83,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\mihai\Downloads\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\lib-vc2022;C:\Users\IAM6CLJ\Downloads\glfw-3.4.bin.WIN64\lib-vc2022;C:\PROGRAME\glfw-3.4.bin.WIN64\glfw-3.4.bin.WIN64\lib-vc2022;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>

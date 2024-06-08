@@ -310,7 +310,7 @@ Environment* initializeEnvironment11(int screenWidth, int screenHeight) {
 	return environment;
 }
 
-Application::Application()
+Application::Application(int scenario)
 {
 	// Initialize GLFW
 	if (!glfwInit()) {
@@ -341,7 +341,29 @@ Application::Application()
 	// Set the key callback function
 	glfwSetKeyCallback(m_window, keyCallback);
 
-	m_environment = initializeEnvironment0(screenWidth, screenHeight);
+	switch (scenario) {
+	case 0:
+		m_environment = initializeEnvironment0(screenWidth, screenHeight);
+		break;
+	case 1:
+		m_environment = initializeEnvironment1(screenWidth, screenHeight);
+		break;
+	case 2:
+		m_environment = initializeEnvironment2(screenWidth, screenHeight);
+		break;
+	case 3:
+		m_environment = initializeEnvironment5(screenWidth, screenHeight);
+		break;
+	case 4:
+		m_environment = initializeEnvironment10(screenWidth, screenHeight);
+		break;
+	case 5:
+		m_environment = initializeEnvironment11(screenWidth, screenHeight);
+		break;
+	default:
+		m_environment = initializeEnvironment0(screenWidth, screenHeight);
+		break;
+	}
 	globalEnvironment = m_environment;
 }
 
@@ -459,3 +481,24 @@ void Application::update(float dt)
 	//m_environment->update(dt);
 	m_environment->newUpdate(dt);
 }
+
+void Application::updatePressure(float pressure) {
+	m_environment->updatePressureCoefficient(pressure);
+}
+
+void Application::updateGravity(float gravity)
+{
+	m_environment->updateGravity(gravity);
+}
+
+void Application::updateTargetDensity(float targetDensity)
+{
+	m_environment->updateTargetDensity(targetDensity);
+}
+
+void Application::updateViscosity(float viscosity)
+{
+	m_environment->updateViscosity(viscosity);
+}
+
+

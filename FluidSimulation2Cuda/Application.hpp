@@ -12,23 +12,29 @@
 class Application
 {
 public:
-    Application();
-    ~Application();
+	Application(int scenario);
+	Application() {}
+	~Application();
 
-    void events();
-    void loop();
-    void render();
+	void events();
+	void loop();
+	void render();
 
-    void update(float dt);
+	void update(float dt);
 
-    void mousePress();
+	void mousePress();
 
-    //void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	void updatePressure(float pressure);
+	void updateGravity(float gravity);
+	void updateTargetDensity(float targetDensity);
+	void updateViscosity(float viscosity);
+
+	//void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 private:
 
-    GLFWwindow* m_window;
+	GLFWwindow* m_window;
 
-    Environment* m_environment;
+	Environment* m_environment;
 
-    int m_width, m_height;
+	int m_width, m_height;
 };

@@ -32,6 +32,11 @@ public:
 	void turnSurfaceTension();
 	void deleteLastObstacle();
 
+	void updatePressureCoefficient(float pressureCoefficient);
+	void updateGravity(float gravity);
+	void updateTargetDensity(float targetDensity);
+	void updateViscosity(float viscosity);
+
 private:
 
 	int m_ParticleCount = 3000;
@@ -44,6 +49,10 @@ private:
 	int m_InteractionMatrixCols;
 
 	float m_ViscosityStrength;
+	float m_TargetDensity = 0.8f;
+	float m_PressureCoefficient = 50.0f;
+
+	float m_Gravity = 20.0f;
 
 	bool m_GeneratorsTurned = false;
 	bool m_ApplySurfaceTension = false;
