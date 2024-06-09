@@ -1148,7 +1148,7 @@ void GpuUpdateParticles(std::vector<Particle>& particles, int& particlesSize, in
 		sum += outputPressureObstacles[i] * particles.at(i).m_Mass * dt;
 	}
 
-	printf("Sum: %f \n", sum);
+	//printf("Sum: %f \n", sum);
 
 	/*SolidRectangle* solidObjectsOutput = new SolidRectangle[solidObjects.size()];
 

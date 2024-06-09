@@ -9,10 +9,10 @@ GUIApplication::GUIApplication()
 	: window(nullptr), renderer(nullptr), font(nullptr), quit(false),
 	startButton({ 300, 200, 200, 50 }), editButton({ 200, 300, 400, 50 }),
 	selectedScenario(-1), dropdownVisible(false),
-	gravitySlider({ {300, 400, 200, 10}, {300, 395, 20, 20}, 0.0f, 100.0f, 0.0f, "Gravity" }),
-	pressureSlider({ {300, 450, 200, 10}, {300, 445, 20, 20}, 0.0f, 100.0f, 0.0f, "Pressure" }),
-	targetDensitySlider({ {300, 500, 200, 10}, {300, 495, 20, 20}, 0.0f, 2.0f, 0.0f, "Target Density" }),
-	viscositySlider({ {300, 550, 200, 10}, {300, 545, 20, 20}, 0.0f, 1.0f, 0.1f, "Viscosity" })
+	gravitySlider({ {300, 150, 200, 10}, {300, 145, 20, 20}, 0.0f, 100.0f, 0.0f, "Gravity" }),
+	pressureSlider({ {300, 200, 200, 10}, {300, 195, 20, 20}, 0.0f, 100.0f, 0.0f, "Pressure" }),
+	targetDensitySlider({ {300, 250, 200, 10}, {300, 245, 20, 20}, 0.0f, 2.0f, 0.0f, "Target Density" }),
+	viscositySlider({ {300, 300, 200, 10}, {300, 295, 20, 20}, 0.0f, 1.0f, 0.1f, "Viscosity" })
 {}
 
 GUIApplication::~GUIApplication() {
@@ -206,7 +206,7 @@ void GUIApplication::renderSlider(Slider& slider) {
 }
 
 void GUIApplication::handleSlider(Slider& slider, int mouseX, int mouseY) {
-	if (isInside(mouseX, mouseY, slider.bar.x, slider.bar.y - 5, slider.bar.w, slider.bar.h + 10)) {
+	if (scenarioStarted && isInside(mouseX, mouseY, slider.bar.x, slider.bar.y - 5, slider.bar.w, slider.bar.h + 10)) {
 		slider.handle.x = mouseX - slider.handle.w / 2;
 		if (slider.handle.x < slider.bar.x) slider.handle.x = slider.bar.x;
 		if (slider.handle.x > slider.bar.x + slider.bar.w - slider.handle.w) slider.handle.x = slider.bar.x + slider.bar.w - slider.handle.w;
@@ -247,12 +247,12 @@ void GUIApplication::handleEvents() {
 			int x, y;
 			SDL_GetMouseState(&x, &y);
 
-			if (isInside(x, y, startButton.x, startButton.y, startButton.w, startButton.h)) {
+			if (!scenarioStarted && isInside(x, y, startButton.x, startButton.y, startButton.w, startButton.h)) {
 				std::cout << "Start button clicked" << std::endl;
 				this->start();
 			}
 
-			if (isInside(x, y, editButton.x, editButton.y, editButton.w, editButton.h)) {
+			if (!scenarioStarted && isInside(x, y, editButton.x, editButton.y, editButton.w, editButton.h)) {
 				std::cout << "Edit Configuration button clicked" << std::endl;
 				dropdownVisible = !dropdownVisible;
 			}
@@ -278,24 +278,30 @@ void GUIApplication::render() {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
-	renderButton(startButton.x, startButton.y, startButton.w, startButton.h, "Start");
+	if (!scenarioStarted) {
 
-	std::string selectedConfigText = "Select scenario";
+		renderButton(startButton.x, startButton.y, startButton.w, startButton.h, "Start");
 
-	if (selectedScenario != -1) {
-		selectedConfigText = "Scenario: " + scenarioOptions[selectedScenario];
+		std::string selectedConfigText = "Select scenario";
+
+		if (selectedScenario != -1) {
+			selectedConfigText = "Scenario: " + scenarioOptions[selectedScenario];
+		}
+
+		renderButton(editButton.x, editButton.y, editButton.w, editButton.h, selectedConfigText.c_str());
+
+		if (dropdownVisible) {
+			renderDropdown(editButton.x, editButton.y + editButton.h, editButton.w, 30, scenarioOptions, selectedScenario);
+		}
 	}
+	else {
 
-	renderButton(editButton.x, editButton.y, editButton.w, editButton.h, selectedConfigText.c_str());
+		renderSlider(gravitySlider);
+		renderSlider(pressureSlider);
+		renderSlider(targetDensitySlider);
+		renderSlider(viscositySlider);
 
-	if (dropdownVisible) {
-		renderDropdown(editButton.x, editButton.y + editButton.h, editButton.w, 30, scenarioOptions, selectedScenario);
 	}
-
-	renderSlider(gravitySlider);
-	renderSlider(pressureSlider);
-	renderSlider(targetDensitySlider);
-	renderSlider(viscositySlider);
 
 	SDL_RenderPresent(renderer);
 }
