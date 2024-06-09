@@ -32,6 +32,10 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+#Unignore sdl libraries
+!SDL2-2.28.5\lib\x64
+!SDL2_ttf-2.22.0\lib\x64
+
 # Visual Studio 2015/2017 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot
