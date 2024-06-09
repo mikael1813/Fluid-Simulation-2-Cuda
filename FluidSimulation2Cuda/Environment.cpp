@@ -63,7 +63,7 @@ Environment::Environment(int tmp_particleCount, int particleRadius, int particle
 			// check if spawn area is not empty
 
 
-			if ( !(spawnArea.Point1.X == 0 && spawnArea.Point1.Y == 0 && spawnArea.Point2.X == 0 && spawnArea.Point2.Y == 0) &&
+			if (!(spawnArea.Point1.X == 0 && spawnArea.Point1.Y == 0 && spawnArea.Point2.X == 0 && spawnArea.Point2.Y == 0) &&
 				!((posX > spawnArea.Point1.X && posX < spawnArea.Point2.X) && (posY > spawnArea.Point1.Y && posY < spawnArea.Point2.Y))) {
 				ok = false;
 				continue;
@@ -280,16 +280,17 @@ void Environment::newUpdate(float dt) {
 
 
 	float averageDensity = 0.0f;
+	//float sum = 0.0f;
 	for (int i = 0; i < m_ParticleCount; i++) {
 		averageDensity += m_Particles[i].m_Density;
 		if (m_Particles[i].m_Position.Y > 895) {
 			int x = 0;
 		}
-		auto particle = m_Particles[i];
+		/*auto particle = m_Particles[i];
 		auto distance = distancePointToLine1(m_Particles[i].m_Position, m_Obstacles[2].Point1, m_Obstacles[2].Point2);
 		if (distance < m_ParticleRadius*2){
-			int x = 0;
-		}
+			sum += m_Particles[i].m_Velocity.Y;
+		}*/
 	}
 	averageDensity /= m_ParticleCount;
 	//printf("Average density: %f\n", averageDensity);
@@ -298,7 +299,7 @@ void Environment::newUpdate(float dt) {
 
 	GpuUpdateParticles(m_Particles, m_ParticleCount, m_ParticleRadiusOfRepel, m_ParticleRadius, m_ParticleRepulsionForce,
 		m_Obstacles, m_SolidObjects, dt, m_InteractionMatrixRows, m_InteractionMatrixCols, averageDensity, m_GeneratorsTurned,
-		resizeNeeded, m_ApplySurfaceTension, m_ViscosityStrength, m_TargetDensity, m_PressureCoefficient, m_Gravity);
+		resizeNeeded, m_ApplySurfaceTension, m_ViscosityStrength, m_TargetDensity, m_PressureCoefficient, m_Gravity, m_WallPressure);
 
 	if (resizeNeeded) {
 		int particleCount = Math::nextPowerOf2(m_Particles.size() + 1);

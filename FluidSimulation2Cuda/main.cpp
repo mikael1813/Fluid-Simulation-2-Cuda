@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
-#include "GUIApplication.hpp"
+//#include "GUIApplication.hpp"
+#include "System.hpp"
 
 using namespace std;
 
@@ -12,8 +13,11 @@ int main(int argc, char* args[]) {
 
 	//Application* app = new Application(0);
 
-	GUIApplication gui;
-	gui.init();
+	/*GUIApplication gui;
+	gui.init();*/
+
+	System system;
+	system.init();
 
 	//delete app;
 
@@ -24,6 +28,8 @@ int main(int argc, char* args[]) {
 
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
 	_CrtDumpMemoryLeaks();*/
+
+	system.thread.join();
 
 	return 0;
 }

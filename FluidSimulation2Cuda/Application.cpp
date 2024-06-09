@@ -1,6 +1,8 @@
 #include "Application.hpp"
 #include "Timer.hpp"
 
+#include "constants.h"
+
 Environment* globalEnvironment;
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -312,6 +314,7 @@ Environment* initializeEnvironment11(int screenWidth, int screenHeight) {
 
 Application::Application(int scenario)
 {
+
 	// Initialize GLFW
 	if (!glfwInit()) {
 		std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -397,6 +400,11 @@ void Application::loop()
 
 		this->update(deltaTime);
 
+		this->notify(APP, TOP_WALL_PRESSURE, this->m_environment->m_WallPressure[0]);
+		this->notify(APP, RIGHT_WALL_PRESSURE, this->m_environment->m_WallPressure[1]);
+		this->notify(APP, BOTTOM_WALL_PRESSURE, this->m_environment->m_WallPressure[2]);
+		this->notify(APP, LEFT_WALL_PRESSURE, this->m_environment->m_WallPressure[3]);
+
 		std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
 		double tick = std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
 
@@ -431,7 +439,7 @@ void Application::loop()
 		frames++;
 
 		if (time_passed >= 1.0f) {
-			std::cout << "FPS: " << frames << " " << std::endl;
+			this->notify(APP, FPS, frames);
 			time_passed = 0.0f;
 			frames = 0;
 		}

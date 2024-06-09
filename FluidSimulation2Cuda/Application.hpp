@@ -8,8 +8,10 @@
 #include <cmath>
 
 #include "Environment.hpp"
+#include "Subject.h"
 
-class Application
+
+class Application : public Subject
 {
 public:
 	Application(int scenario);

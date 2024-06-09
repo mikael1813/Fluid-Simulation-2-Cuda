@@ -37,6 +37,8 @@ public:
 	void updateTargetDensity(float targetDensity);
 	void updateViscosity(float viscosity);
 
+	std::vector<float> m_WallPressure{ 0,0,0,0 };
+
 private:
 
 	int m_ParticleCount = 3000;

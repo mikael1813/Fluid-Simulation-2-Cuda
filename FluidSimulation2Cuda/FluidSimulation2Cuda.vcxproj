@@ -18,20 +18,25 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Phisics.cpp" />
     <ClCompile Include="Pipe.cpp" />
+    <ClCompile Include="System.cpp" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.hpp" />
+    <ClInclude Include="constants.h" />
     <ClInclude Include="CudaMath.cuh" />
     <ClInclude Include="Environment.hpp" />
     <ClInclude Include="GpuParallel.cuh" />
     <ClInclude Include="Graphics.hpp" />
     <ClInclude Include="GUIApplication.hpp" />
     <ClInclude Include="InteractionMatrixClass.hpp" />
+    <ClInclude Include="Observer.h" />
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="Phisics.hpp" />
     <ClInclude Include="Pipe.hpp" />
     <ClInclude Include="SolidObject.hpp" />
+    <ClInclude Include="Subject.h" />
+    <ClInclude Include="System.hpp" />
     <ClInclude Include="Timer.hpp" />
   </ItemGroup>
   <ItemGroup>
